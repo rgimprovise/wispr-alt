@@ -39,22 +39,35 @@ pub fn paste_text(text: &str) -> Result<(), String> {
 
 #[cfg(target_os = "macos")]
 fn platform_paste() -> Result<(), String> {
-    use std::process::Command;
+    // Synthesize Cmd+V directly via CGEvent. This avoids shelling out to
+    // osascript (which spawns System Events as a separate process and
+    // subjects THAT process to its own Accessibility check — which is
+    // what we were hitting with the "keystrokes for osascript not
+    // allowed" error). With CGEvent, the TCC check is against our own
+    // process, for which the user has already granted Accessibility.
+    //
+    // Key code 9 is the physical V key, layout-agnostic.
+    use core_graphics::event::{
+        CGEvent, CGEventFlags, CGEventTapLocation, CGKeyCode,
+    };
+    use core_graphics::event_source::{CGEventSource, CGEventSourceStateID};
 
-    // key code 9 = physical V key. Using `keystroke "v"` breaks on
-    // non-Latin keyboard layouts (e.g. on Russian "v" position maps to "м"
-    // → Cmd+М, which is unbound).
-    let script = r#"tell application "System Events" to key code 9 using {command down}"#;
-    let output = Command::new("osascript")
-        .arg("-e")
-        .arg(script)
-        .output()
-        .map_err(|e| format!("osascript spawn: {e}"))?;
+    const KEY_V: CGKeyCode = 9;
+    const TAP: CGEventTapLocation = CGEventTapLocation::HID;
 
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("osascript failed: {stderr}"));
-    }
+    let source = CGEventSource::new(CGEventSourceStateID::HIDSystemState)
+        .map_err(|_| "CGEventSource::new failed".to_string())?;
+
+    let down = CGEvent::new_keyboard_event(source.clone(), KEY_V, true)
+        .map_err(|_| "keyboard down event failed".to_string())?;
+    down.set_flags(CGEventFlags::CGEventFlagCommand);
+    down.post(TAP);
+
+    let up = CGEvent::new_keyboard_event(source, KEY_V, false)
+        .map_err(|_| "keyboard up event failed".to_string())?;
+    up.set_flags(CGEventFlags::CGEventFlagCommand);
+    up.post(TAP);
+
     Ok(())
 }
 

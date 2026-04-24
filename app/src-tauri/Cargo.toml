@@ -38,5 +38,6 @@ enigo = "0.2"
 #   fullscreen behaviour that Tauri doesn't expose directly)
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.10"
+core-graphics = "0.24"
 objc2 = "0.6"
 

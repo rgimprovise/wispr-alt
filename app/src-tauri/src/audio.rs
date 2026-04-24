@@ -149,6 +149,13 @@ impl Recorder {
         }
     }
 
+    /// Encode the current buffer as WAV without stopping the recording.
+    /// Used for incremental "live preview" transcription while the user speaks.
+    pub fn snapshot_wav(&self) -> Result<Vec<u8>, String> {
+        let samples = self.samples.lock().unwrap().clone();
+        write_wav(&samples, self.sample_rate)
+    }
+
     pub fn stop(&mut self) -> Result<Vec<u8>, String> {
         let tx = self.stop_tx.take().ok_or("not recording")?;
         let done_rx = self.done_rx.take();

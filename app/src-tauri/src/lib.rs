@@ -2,7 +2,7 @@ mod audio;
 mod inject;
 
 use std::sync::Mutex;
-use tauri::Emitter;
+use tauri::{Emitter, WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -17,6 +17,11 @@ fn start_recording(state: tauri::State<AppState>) -> Result<(), String> {
 #[tauri::command]
 fn stop_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
     state.recorder.lock().unwrap().stop()
+}
+
+#[tauri::command]
+fn snapshot_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
+    state.recorder.lock().unwrap().snapshot_wav()
 }
 
 #[tauri::command]
@@ -40,20 +45,40 @@ pub fn run() {
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(|app, _shortcut, event| {
                     if event.state == ShortcutState::Pressed {
-                        // JS owns the state machine. We just notify.
                         let _ = app.emit("hotkey-pressed", ());
                     }
                 })
                 .build(),
         )
         .setup(|app| {
+            // Register F5 global shortcut.
             let shortcut = Shortcut::new(None, Code::F5);
             app.global_shortcut().register(shortcut)?;
+
+            // Create floating overlay window. Always-on-top, borderless,
+            // shows live partial transcript. Hidden by default; main window's
+            // JS toggles visibility based on recording state.
+            let _ = WebviewWindowBuilder::new(
+                app,
+                "overlay",
+                WebviewUrl::App("overlay.html".into()),
+            )
+            .title("wispr-alt")
+            .decorations(false)
+            .always_on_top(true)
+            .skip_taskbar(true)
+            .resizable(false)
+            .inner_size(460.0, 72.0)
+            .position(500.0, 900.0)
+            .visible(false)
+            .build()?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             start_recording,
             stop_recording,
+            snapshot_recording,
             is_recording,
             paste
         ])

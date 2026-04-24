@@ -55,6 +55,34 @@ fn paste(text: String) -> Result<(), String> {
     inject::paste_text(&text)
 }
 
+/// Returns true if the app has macOS Accessibility permission. If not,
+/// also triggers the system's native prompt (same call does both).
+#[tauri::command]
+fn check_accessibility() -> bool {
+    perms::prompt_accessibility()
+}
+
+/// Re-apply NSWindow collection behavior + level on the overlay so it
+/// sits above full-screen apps. Called from JS after each show() so we
+/// don't rely on setup-time configuration sticking.
+#[tauri::command]
+fn configure_overlay(app: tauri::AppHandle) -> Result<(), String> {
+    use tauri::Manager;
+    #[cfg(target_os = "macos")]
+    {
+        let window = app
+            .get_webview_window("overlay")
+            .ok_or("overlay window not found")?;
+        let ns_window = window.ns_window().map_err(|e| e.to_string())?;
+        perms::make_overlay_floating_over_fullscreen(ns_window);
+    }
+    #[cfg(not(target_os = "macos"))]
+    {
+        let _ = app;
+    }
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -146,7 +174,9 @@ pub fn run() {
             stop_recording,
             snapshot_recording,
             is_recording,
-            paste
+            paste,
+            check_accessibility,
+            configure_overlay
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -45,9 +45,14 @@ async function setOverlayVisible(visible: boolean) {
 
     if (visible) {
       await overlay.show();
+      // Re-apply NSWindow collection behavior + level every time we show,
+      // so the overlay floats above full-screen macOS apps.
+      try {
+        await invoke("configure_overlay");
+      } catch (err) {
+        log(`configure_overlay failed: ${err}`);
+      }
       log("overlay shown");
-      // Give the OS one frame to materialize the window, then trigger the
-      // enter-animation inside the overlay webview.
       await new Promise((r) => setTimeout(r, 16));
       await emit("overlay-visible", true);
     } else {
@@ -179,8 +184,24 @@ async function onHotkey() {
   // ignore presses while transcribing
 }
 
-window.addEventListener("DOMContentLoaded", () => {
+window.addEventListener("DOMContentLoaded", async () => {
   setStatus("idle");
+
+  // Check Accessibility permission status and surface it to the log so the
+  // user can tell at a glance if paste will work. The same call also
+  // triggers the native prompt if we're not yet trusted.
+  try {
+    const trusted = (await invoke("check_accessibility")) as boolean;
+    if (trusted) {
+      log("accessibility: OK");
+    } else {
+      log(
+        "accessibility: NOT GRANTED — System Settings → Privacy & Security → Accessibility → add wispr-alt → restart app"
+      );
+    }
+  } catch (err) {
+    log(`accessibility check failed: ${err}`);
+  }
 
   listen("hotkey-pressed", () => {
     onHotkey();

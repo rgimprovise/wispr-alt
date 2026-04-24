@@ -1,5 +1,6 @@
 mod audio;
 mod inject;
+mod perms;
 
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -71,6 +72,12 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Prompt for macOS Accessibility permission on first launch.
+            // This is required for osascript to synthesize Cmd+V into
+            // other applications via System Events.
+            let trusted = perms::prompt_accessibility();
+            eprintln!("[perms] accessibility trusted: {trusted}");
+
             // Register F5 global shortcut.
             let shortcut = Shortcut::new(None, Code::F5);
             app.global_shortcut().register(shortcut)?;

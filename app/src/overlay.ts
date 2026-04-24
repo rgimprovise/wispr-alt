@@ -13,17 +13,28 @@ const windowEl = document.getElementById("window") as HTMLDivElement;
 
 // ─── Smooth teletype scroll ───────────────────────────────────────────────
 //
-// The text element renders at its natural width inside a clipped window.
-// We animate `translateX(-offset)` so the right edge of the text stays
-// aligned with the right edge of the window (i.e. we always show the
-// latest words). A simple lerp towards the target offset gives natural
-// deceleration when catching up and automatic stopping when aligned.
+// Rate-limited velocity controller (trapezoidal profile). Each frame:
+//   desired_v = sign(dx) · min(V_MAX, |dx| · K)
+//   v        += clamp(desired_v − v, ±A_MAX)
+//   offset   += v
+//
+// Effect:
+//   - far from target → v ramps smoothly from 0 up to V_MAX over ~300ms
+//   - cruising        → v stays at V_MAX
+//   - approaching     → desired_v decays linearly, v smoothly follows down
+//   - arrived         → v decays to 0, loop exits
+//
+// No instantaneous velocity changes anywhere → no visual jumps.
 
-const LERP = 0.08; // per-frame factor (60fps ⇒ ~200ms half-life)
-const EPS = 0.3;
+const V_MAX = 1.8;   // px/frame max speed (~108 px/s at 60fps; ~9 chars/sec)
+const A_MAX = 0.07;  // px/frame² max acceleration (reaches V_MAX in ~26 frames ≈ 430ms)
+const K = 0.15;      // gain for deceleration near target (starts slowing below ~12px)
+const EPS_POS = 0.4;
+const EPS_VEL = 0.05;
 
 let currentOffset = 0;
 let targetOffset = 0;
+let velocity = 0;
 let rafHandle: number | null = null;
 
 function applyTransform() {
@@ -32,13 +43,28 @@ function applyTransform() {
 
 function animate() {
   const dx = targetOffset - currentOffset;
-  if (Math.abs(dx) < EPS) {
+
+  // Stop condition: close enough AND moving slowly enough.
+  if (Math.abs(dx) < EPS_POS && Math.abs(velocity) < EPS_VEL) {
     currentOffset = targetOffset;
+    velocity = 0;
     applyTransform();
     rafHandle = null;
     return;
   }
-  currentOffset += dx * LERP;
+
+  const sign = Math.sign(dx);
+  const desiredSpeed = Math.min(V_MAX, Math.abs(dx) * K);
+  const desiredVelocity = sign * desiredSpeed;
+
+  const dv = desiredVelocity - velocity;
+  if (Math.abs(dv) > A_MAX) {
+    velocity += Math.sign(dv) * A_MAX;
+  } else {
+    velocity = desiredVelocity;
+  }
+
+  currentOffset += velocity;
   applyTransform();
   rafHandle = requestAnimationFrame(animate);
 }
@@ -75,6 +101,7 @@ function render(state: State, text?: string) {
     // Snap instantly (no scroll needed for placeholder text).
     currentOffset = 0;
     targetOffset = 0;
+    velocity = 0;
     applyTransform();
     return;
   }

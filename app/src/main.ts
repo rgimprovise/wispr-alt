@@ -7,10 +7,7 @@ type RecordingState = "idle" | "recording" | "transcribing";
 const BACKEND_URL =
   (import.meta as any).env?.VITE_BACKEND_URL ?? "http://localhost:8787";
 
-const SNAPSHOT_INTERVAL_MS = 2000;
-
 let state: RecordingState = "idle";
-let snapshotTimer: number | null = null;
 let snapshotInFlight = false;
 let lastPartial = "";
 let snapshotSeq = 0; // guard against late responses overwriting fresher ones
@@ -84,14 +81,17 @@ async function tickSnapshot() {
   const mySeq = ++snapshotSeq;
   try {
     const wav = (await invoke("snapshot_recording")) as number[];
+    log(`snapshot: ${wav.length} bytes, posting…`);
     const text = await transcribePartial(wav);
-    // only apply if we're still the freshest request AND still recording
     if (mySeq === snapshotSeq && state === "recording" && text) {
       lastPartial = text;
       updateOverlay("recording", text);
+      log(`partial: "${text.slice(0, 60)}"`);
+    } else if (!text) {
+      log(`partial: (empty, wav too short?)`);
     }
   } catch (err) {
-    console.warn("snapshot tick failed", err);
+    log(`snapshot failed: ${err}`);
   } finally {
     snapshotInFlight = false;
   }
@@ -99,15 +99,13 @@ async function tickSnapshot() {
 
 async function startRecording() {
   try {
-    await invoke("start_recording");
     lastPartial = "";
     snapshotSeq = 0;
     snapshotInFlight = false;
+    await invoke("start_recording"); // Rust spawns its own ticker thread
     setStatus("recording");
     await setOverlayVisible(true);
     log("recording started");
-    // kick off polling
-    snapshotTimer = window.setInterval(tickSnapshot, SNAPSHOT_INTERVAL_MS);
   } catch (err) {
     log(`start failed: ${err}`);
     setStatus("idle");
@@ -116,10 +114,6 @@ async function startRecording() {
 
 async function stopAndFinalize() {
   try {
-    if (snapshotTimer !== null) {
-      window.clearInterval(snapshotTimer);
-      snapshotTimer = null;
-    }
     // invalidate any pending snapshot responses
     snapshotSeq++;
 
@@ -168,6 +162,11 @@ window.addEventListener("DOMContentLoaded", () => {
 
   listen("hotkey-pressed", () => {
     onHotkey();
+  });
+
+  // Rust-driven snapshot ticker (immune to WKWebView background throttling).
+  listen("snapshot-tick", () => {
+    tickSnapshot();
   });
 
   document.querySelector("#test-paste")?.addEventListener("click", async () => {

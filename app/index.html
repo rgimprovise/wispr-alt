@@ -18,12 +18,28 @@
         </div>
       </div>
 
-      <p class="hint">Нажмите <kbd class="kcap">F5</kbd> в любом приложении для записи.</p>
+      <p class="hint">
+        Нажмите <kbd class="kcap" id="hotkey-hint">F5</kbd> в любом приложении для записи.
+      </p>
 
       <div id="status" class="status status--idle">
         <span class="status__dot"></span>
         <span class="status__label">idle</span>
       </div>
+
+      <!-- Settings: hotkey picker -->
+      <section class="settings">
+        <div class="t-caption">Настройки</div>
+        <div class="setting-row">
+          <div class="setting-row__label">
+            <div class="setting-row__title">Глобальный хоткей</div>
+            <div class="setting-row__hint">Нажмите кнопку и введите новое сочетание клавиш</div>
+          </div>
+          <button id="hotkey-picker" class="btn btn--secondary hotkey-picker">
+            <span id="hotkey-picker-label">F5</span>
+          </button>
+        </div>
+      </section>
 
       <div class="row">
         <button id="test-paste" class="btn btn--secondary">Test paste injection</button>

@@ -220,4 +220,185 @@ window.addEventListener("DOMContentLoaded", async () => {
       log(`paste failed: ${err}`);
     }
   });
+
+  // Load current hotkey and wire up the picker.
+  try {
+    const current = (await invoke("get_hotkey")) as string;
+    updateHotkeyUI(current);
+  } catch (err) {
+    log(`failed to load hotkey: ${err}`);
+  }
+  wireHotkeyPicker();
 });
+
+// ─── Hotkey picker ─────────────────────────────────────────────────────────
+
+function updateHotkeyUI(combo: string) {
+  const pickerLabel = document.getElementById("hotkey-picker-label");
+  const hint = document.getElementById("hotkey-hint");
+  const display = formatComboForDisplay(combo);
+  if (pickerLabel) pickerLabel.textContent = display;
+  if (hint) hint.textContent = display;
+}
+
+/**
+ * Shortcut strings sent to Tauri use the electron format:
+ *   "F5", "CmdOrCtrl+Shift+K", "Alt+Space".
+ * For display we pretty-print with OS-appropriate glyphs.
+ */
+function formatComboForDisplay(combo: string): string {
+  const isMac = navigator.platform.toLowerCase().includes("mac");
+  return combo
+    .split("+")
+    .map((part) => {
+      if (!isMac) return part;
+      switch (part) {
+        case "Cmd":
+        case "CmdOrCtrl":
+        case "Meta":
+        case "Super":
+          return "⌘";
+        case "Ctrl":
+        case "Control":
+          return "⌃";
+        case "Shift":
+          return "⇧";
+        case "Alt":
+        case "Option":
+          return "⌥";
+        default:
+          return part;
+      }
+    })
+    .join(isMac ? "" : "+");
+}
+
+function wireHotkeyPicker() {
+  const btn = document.getElementById("hotkey-picker") as HTMLButtonElement | null;
+  const label = document.getElementById("hotkey-picker-label");
+  if (!btn || !label) return;
+
+  let listening = false;
+  let handler: ((e: KeyboardEvent) => void) | null = null;
+
+  const stopListening = () => {
+    listening = false;
+    if (handler) {
+      window.removeEventListener("keydown", handler, true);
+      handler = null;
+    }
+    btn.classList.remove("hotkey-picker--listening");
+  };
+
+  btn.addEventListener("click", () => {
+    if (listening) return;
+    listening = true;
+    btn.classList.add("hotkey-picker--listening");
+    label.textContent = "Нажмите сочетание…";
+
+    handler = async (e: KeyboardEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      // Ignore plain modifier presses — wait for a real key.
+      if (["Meta", "Control", "Shift", "Alt", "AltGraph"].includes(e.key)) {
+        return;
+      }
+
+      // Escape cancels.
+      if (e.key === "Escape") {
+        stopListening();
+        // restore last saved
+        try {
+          const current = (await invoke("get_hotkey")) as string;
+          updateHotkeyUI(current);
+        } catch {
+          /* noop */
+        }
+        return;
+      }
+
+      const combo = comboFromKeyEvent(e);
+      stopListening();
+
+      try {
+        await invoke("set_hotkey", { combo });
+        updateHotkeyUI(combo);
+        log(`hotkey changed → ${combo}`);
+      } catch (err) {
+        log(`set_hotkey failed: ${err}`);
+        // Restore previous UI
+        try {
+          const current = (await invoke("get_hotkey")) as string;
+          updateHotkeyUI(current);
+        } catch {
+          /* noop */
+        }
+      }
+    };
+    window.addEventListener("keydown", handler, true);
+  });
+}
+
+function comboFromKeyEvent(e: KeyboardEvent): string {
+  const parts: string[] = [];
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.altKey) parts.push("Alt");
+  if (e.shiftKey) parts.push("Shift");
+  if (e.metaKey) parts.push("Cmd");
+  parts.push(normalizeKey(e));
+  return parts.join("+");
+}
+
+/**
+ * Convert a KeyboardEvent into the token Tauri's Shortcut::from_str expects.
+ * Uses e.code (physical key) so layout doesn't skew e.g. Russian 'в' → 'D'.
+ */
+function normalizeKey(e: KeyboardEvent): string {
+  const code = e.code;
+
+  // Letter keys → single uppercase letter
+  const letterMatch = code.match(/^Key([A-Z])$/);
+  if (letterMatch) return letterMatch[1];
+
+  // Digit keys
+  const digitMatch = code.match(/^Digit([0-9])$/);
+  if (digitMatch) return digitMatch[1];
+
+  // Function keys
+  if (/^F\d{1,2}$/.test(code)) return code; // F1..F24
+
+  // Named keys
+  const named: Record<string, string> = {
+    Space: "Space",
+    Enter: "Enter",
+    NumpadEnter: "Enter",
+    Tab: "Tab",
+    Escape: "Escape",
+    Backspace: "Backspace",
+    Delete: "Delete",
+    ArrowUp: "Up",
+    ArrowDown: "Down",
+    ArrowLeft: "Left",
+    ArrowRight: "Right",
+    Home: "Home",
+    End: "End",
+    PageUp: "PageUp",
+    PageDown: "PageDown",
+    Minus: "-",
+    Equal: "=",
+    BracketLeft: "[",
+    BracketRight: "]",
+    Semicolon: ";",
+    Quote: "'",
+    Backquote: "`",
+    Comma: ",",
+    Period: ".",
+    Slash: "/",
+    Backslash: "\\",
+  };
+  if (named[code]) return named[code];
+
+  // Fallback to the code itself.
+  return code;
+}

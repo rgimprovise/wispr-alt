@@ -1,13 +1,18 @@
 mod audio;
 mod inject;
 mod perms;
+mod settings;
 
+use std::str::FromStr;
 use std::sync::Mutex;
 use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
-use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Shortcut, ShortcutState};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
     pub recorder: Mutex<audio::Recorder>,
+    /// Currently-registered global shortcut so we can unregister it when
+    /// the user picks a new one.
+    pub current_hotkey: Mutex<Option<Shortcut>>,
 }
 
 
@@ -69,6 +74,47 @@ fn check_accessibility() -> bool {
 /// NSWindow mutation must run on the main thread; Tauri command handlers
 /// run on an async runtime thread. We dispatch to main via
 /// `run_on_main_thread`.
+/// Returns the currently-active hotkey string (e.g. "F5", "CmdOrCtrl+Space").
+#[tauri::command]
+fn get_hotkey(app: tauri::AppHandle) -> String {
+    settings::load(&app).hotkey
+}
+
+/// Unregister the current global shortcut and register the new one, then
+/// persist to disk. The shortcut string must be in the electron-style
+/// format that `Shortcut::from_str` understands.
+#[tauri::command]
+fn set_hotkey(
+    app: tauri::AppHandle,
+    state: tauri::State<AppState>,
+    combo: String,
+) -> Result<(), String> {
+    let new_shortcut = Shortcut::from_str(&combo)
+        .map_err(|e| format!("invalid shortcut '{combo}': {e}"))?;
+
+    let gs = app.global_shortcut();
+
+    // Unregister the previous shortcut if any.
+    {
+        let mut cur = state.current_hotkey.lock().unwrap();
+        if let Some(old) = cur.take() {
+            let _ = gs.unregister(old);
+        }
+    }
+
+    // Register the new one; restore old on failure.
+    gs.register(new_shortcut)
+        .map_err(|e| format!("register '{combo}': {e}"))?;
+    *state.current_hotkey.lock().unwrap() = Some(new_shortcut);
+
+    // Persist.
+    let new_settings = settings::Settings { hotkey: combo.clone() };
+    settings::save(&app, &new_settings)?;
+
+    eprintln!("[settings] hotkey set to {combo}");
+    Ok(())
+}
+
 #[tauri::command]
 fn configure_overlay(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
@@ -99,6 +145,7 @@ pub fn run() {
     tauri::Builder::default()
         .manage(AppState {
             recorder: Mutex::new(audio::Recorder::new()),
+            current_hotkey: Mutex::new(None),
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(
@@ -117,9 +164,16 @@ pub fn run() {
             let trusted = perms::prompt_accessibility();
             eprintln!("[perms] accessibility trusted: {trusted}");
 
-            // Register F5 global shortcut.
-            let shortcut = Shortcut::new(None, Code::F5);
+            // Load persisted settings and register the user's chosen hotkey
+            // (defaults to F5 on first launch).
+            let loaded = settings::load(&app.handle());
+            eprintln!("[settings] loaded hotkey: {}", loaded.hotkey);
+            let shortcut = Shortcut::from_str(&loaded.hotkey)
+                .unwrap_or_else(|_| Shortcut::from_str("F5").unwrap());
             app.global_shortcut().register(shortcut)?;
+
+            let state = app.state::<AppState>();
+            *state.current_hotkey.lock().unwrap() = Some(shortcut);
 
             // Create floating overlay window. Hidden on startup; shown
             // on demand while recording. Key properties:
@@ -187,7 +241,9 @@ pub fn run() {
             is_recording,
             paste,
             check_accessibility,
-            configure_overlay
+            configure_overlay,
+            get_hotkey,
+            set_hotkey
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -26,58 +26,85 @@ pub fn prompt_accessibility() -> bool {
     true
 }
 
-/// Configure an NSWindow so it sits above full-screen macOS apps and on all
-/// Spaces. Tauri's `always_on_top` + `visible_on_all_workspaces` aren't
-/// enough by themselves — we need to OR in `fullScreenAuxiliary` and bump
-/// the window level past what a full-screen app uses.
+/// Convert the overlay NSWindow into a Siri/Spotlight/Raycast-style floating
+/// panel: always-on-top over any app including full-screen, doesn't steal
+/// focus, doesn't activate our app, visible on every Space.
 ///
-/// NSWindowCollectionBehavior bit flags (from AppKit/NSWindow.h):
-///   CanJoinAllSpaces      = 1 << 0   (= 1)
-///   Stationary            = 1 << 4   (= 16)
-///   FullScreenAuxiliary   = 1 << 8   (= 256)
-///   IgnoresCycle          = 1 << 6   (= 64)
+/// The recipe:
+///   1. Swap class from NSWindow to NSPanel — enables panel semantics.
+///   2. Add NSWindowStyleMaskNonactivatingPanel (1<<7) to styleMask — the
+///      window won't pull focus / activate our app when it appears.
+///   3. Collection behavior: CanJoinAllSpaces | Stationary | FullScreen-
+///      Auxiliary | IgnoresCycle. With NSPanel, FullScreenAuxiliary does
+///      the right thing (floats over current fullscreen Space, not bound
+///      to a specific app).
+///   4. Level = NSScreenSaverWindowLevel (1000) — above everything.
+///   5. setHidesOnDeactivate:NO + setCanHide:NO — stays visible when our
+///      app isn't frontmost.
 ///
-/// Window levels:
-///   NSNormalWindowLevel       = 0
-///   NSFloatingWindowLevel     = 3      (what always_on_top uses)
-///   NSStatusWindowLevel       = 25
-///   NSMainMenuWindowLevel     = 24
-///   NSScreenSaverWindowLevel  = 1000   (above full-screen chrome)
+/// Must be called on the main thread.
 #[cfg(target_os = "macos")]
 pub fn make_overlay_floating_over_fullscreen(ns_window: *mut std::ffi::c_void) {
     use objc2::msg_send;
-    use objc2::runtime::AnyObject;
+    use objc2::runtime::{AnyClass, AnyObject};
 
     if ns_window.is_null() {
-        eprintln!("[overlay] make_overlay_floating_over_fullscreen: null ptr");
+        eprintln!("[overlay] null ns_window ptr");
         return;
     }
 
-    eprintln!("[overlay] configuring NSWindow at {:p}", ns_window);
-
-    let window = ns_window as *mut AnyObject;
-    // CanJoinAllSpaces (1<<0): visible on every Space, including the one a
-    //   full-screen app occupies.
-    // Stationary (1<<4): window stays put when switching Spaces.
-    // IgnoresCycle (1<<6): excluded from Cmd+` app-cycling.
-    //
-    // Deliberately NOT setting FullScreenAuxiliary (1<<8): despite the
-    // name, it bundles the window WITH a particular full-screen app and
-    // can cause the overlay to be bound to a Space instead of floating
-    // over all of them.
-    const BEHAVIOR: usize = (1 << 0) | (1 << 4) | (1 << 6);
-    const LEVEL: isize = 1000; // NSScreenSaverWindowLevel
+    eprintln!("[overlay] configuring NSWindow at {ns_window:p}");
 
     unsafe {
+        let window = ns_window as *mut AnyObject;
         let w = &*window;
-        let _: () = msg_send![w, setCollectionBehavior: BEHAVIOR];
-        let _: () = msg_send![w, setLevel: LEVEL];
 
-        // Query back to confirm changes took effect.
-        let got_behavior: usize = msg_send![w, collectionBehavior];
+        // 1. Swap class → NSPanel
+        if let Some(panel_cls) = AnyClass::get(c"NSPanel") {
+            extern "C" {
+                fn object_setClass(
+                    obj: *mut AnyObject,
+                    cls: *const AnyClass,
+                ) -> *const AnyClass;
+            }
+            let old_cls = object_setClass(window, panel_cls as *const _);
+            eprintln!("[overlay] class-swapped NSWindow → NSPanel (prev: {old_cls:p})");
+        } else {
+            eprintln!("[overlay] WARN: NSPanel class not found");
+        }
+
+        // 2. Add non-activating panel style bit. Start from borderless only
+        //    to keep things clean; Tauri's decorations(false) handles this.
+        const NS_BORDERLESS: u64 = 0;
+        const NS_NONACTIVATING_PANEL: u64 = 1 << 7;
+        let style_mask: u64 = NS_BORDERLESS | NS_NONACTIVATING_PANEL;
+        let _: () = msg_send![w, setStyleMask: style_mask];
+
+        // 3. Collection behavior
+        const CAN_JOIN_ALL_SPACES: usize = 1 << 0;
+        const STATIONARY: usize = 1 << 4;
+        const IGNORES_CYCLE: usize = 1 << 6;
+        const FULL_SCREEN_AUXILIARY: usize = 1 << 8;
+        let behavior: usize = CAN_JOIN_ALL_SPACES
+            | STATIONARY
+            | IGNORES_CYCLE
+            | FULL_SCREEN_AUXILIARY;
+        let _: () = msg_send![w, setCollectionBehavior: behavior];
+
+        // 4. Level
+        const NS_SCREEN_SAVER_WINDOW_LEVEL: isize = 1000;
+        let _: () = msg_send![w, setLevel: NS_SCREEN_SAVER_WINDOW_LEVEL];
+
+        // 5. Don't hide when app deactivates.
+        let _: () = msg_send![w, setHidesOnDeactivate: false];
+        let _: () = msg_send![w, setCanHide: false];
+
+        // Sanity check: read values back.
         let got_level: isize = msg_send![w, level];
+        let got_behavior: usize = msg_send![w, collectionBehavior];
+        let got_mask: u64 = msg_send![w, styleMask];
         eprintln!(
-            "[overlay] after set: collectionBehavior={got_behavior:#x} level={got_level}"
+            "[overlay] applied: level={got_level} behavior={got_behavior:#x} styleMask={got_mask:#x}"
         );
     }
 }

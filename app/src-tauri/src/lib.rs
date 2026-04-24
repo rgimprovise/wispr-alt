@@ -123,6 +123,20 @@ pub fn run() {
                 eprintln!("[overlay] primary_monitor unavailable; using default position");
             }
 
+            // macOS: make the overlay appear over full-screen apps and on
+            // every Space. Tauri only sets CanJoinAllSpaces via
+            // visible_on_all_workspaces; we also need FullScreenAuxiliary
+            // and a high window level.
+            #[cfg(target_os = "macos")]
+            {
+                if let Ok(ns_window) = overlay.ns_window() {
+                    perms::make_overlay_floating_over_fullscreen(ns_window);
+                    eprintln!("[overlay] configured for fullscreen overlay");
+                } else {
+                    eprintln!("[overlay] ns_window unavailable — overlay may not show over fullscreen apps");
+                }
+            }
+
             eprintln!("[overlay] window created: {}", overlay.label());
 
             Ok(())

@@ -1,12 +1,10 @@
 /**
- * Groq Whisper → optional Anthropic Haiku postprocess.
+ * Groq Whisper → optional Groq Llama postprocess (single vendor).
  *
  * Env required:
- *   GROQ_API_KEY        — required
- *   ANTHROPIC_API_KEY   — required if postprocess=true
+ *   GROQ_API_KEY  — required
  *
- * Groq reference: https://console.groq.com/docs/speech-text
- * Anthropic docs: https://docs.claude.com/en/api/messages
+ * Groq reference: https://console.groq.com/docs
  */
 
 export interface TranscribeOpts {
@@ -25,8 +23,8 @@ export interface TranscribeResult {
   };
 }
 
-const GROQ_MODEL = "whisper-large-v3-turbo";
-const ANTHROPIC_MODEL = "claude-haiku-4-5";
+const GROQ_WHISPER_MODEL = "whisper-large-v3-turbo";
+const GROQ_LLM_MODEL = "llama-3.3-70b-versatile";
 
 const POSTPROCESS_SYSTEM = `You clean up raw speech-to-text transcripts.
 
@@ -47,7 +45,7 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   // 1. Groq Whisper
   const groqForm = new FormData();
   groqForm.append("file", opts.audio, opts.audio.name || "audio.wav");
-  groqForm.append("model", GROQ_MODEL);
+  groqForm.append("model", GROQ_WHISPER_MODEL);
   groqForm.append("response_format", "json");
   groqForm.append("temperature", "0");
   if (opts.language) groqForm.append("language", opts.language);
@@ -70,17 +68,10 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   const raw = groqJson.text.trim();
   const t1 = performance.now();
 
-  // 2. Optional Haiku postprocess
+  // 2. Optional LLM postprocess (same Groq key)
   let clean = raw;
   if (opts.postprocess && raw.length > 0) {
-    const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!anthropicKey) {
-      console.warn(
-        "postprocess=true but ANTHROPIC_API_KEY not set; skipping"
-      );
-    } else {
-      clean = await cleanWithHaiku(raw, anthropicKey);
-    }
+    clean = await cleanWithLlama(raw, groqKey);
   }
 
   const t2 = performance.now();
@@ -95,40 +86,35 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   };
 }
 
-async function cleanWithHaiku(raw: string, apiKey: string): Promise<string> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model: ANTHROPIC_MODEL,
-      max_tokens: 1024,
-      system: [
-        {
-          type: "text",
-          text: POSTPROCESS_SYSTEM,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      messages: [{ role: "user", content: raw }],
-    }),
-  });
+async function cleanWithLlama(raw: string, apiKey: string): Promise<string> {
+  const res = await fetch(
+    "https://api.groq.com/openai/v1/chat/completions",
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        model: GROQ_LLM_MODEL,
+        temperature: 0.1,
+        max_tokens: 1024,
+        messages: [
+          { role: "system", content: POSTPROCESS_SYSTEM },
+          { role: "user", content: raw },
+        ],
+      }),
+    }
+  );
 
   if (!res.ok) {
     const errText = await res.text();
-    throw new Error(`Anthropic ${res.status}: ${errText}`);
+    throw new Error(`Groq LLM ${res.status}: ${errText}`);
   }
 
   const json = (await res.json()) as {
-    content: Array<{ type: string; text?: string }>;
+    choices: Array<{ message: { content: string | null } }>;
   };
-  const text = json.content
-    .filter((b) => b.type === "text")
-    .map((b) => b.text ?? "")
-    .join("")
-    .trim();
+  const text = (json.choices[0]?.message?.content ?? "").trim();
   return text || raw;
 }

@@ -49,17 +49,36 @@ pub fn make_overlay_floating_over_fullscreen(ns_window: *mut std::ffi::c_void) {
     use objc2::runtime::AnyObject;
 
     if ns_window.is_null() {
+        eprintln!("[overlay] make_overlay_floating_over_fullscreen: null ptr");
         return;
     }
 
+    eprintln!("[overlay] configuring NSWindow at {:p}", ns_window);
+
     let window = ns_window as *mut AnyObject;
-    const BEHAVIOR: usize = (1 << 0) | (1 << 4) | (1 << 8) | (1 << 6);
+    // CanJoinAllSpaces (1<<0): visible on every Space, including the one a
+    //   full-screen app occupies.
+    // Stationary (1<<4): window stays put when switching Spaces.
+    // IgnoresCycle (1<<6): excluded from Cmd+` app-cycling.
+    //
+    // Deliberately NOT setting FullScreenAuxiliary (1<<8): despite the
+    // name, it bundles the window WITH a particular full-screen app and
+    // can cause the overlay to be bound to a Space instead of floating
+    // over all of them.
+    const BEHAVIOR: usize = (1 << 0) | (1 << 4) | (1 << 6);
     const LEVEL: isize = 1000; // NSScreenSaverWindowLevel
 
     unsafe {
         let w = &*window;
         let _: () = msg_send![w, setCollectionBehavior: BEHAVIOR];
         let _: () = msg_send![w, setLevel: LEVEL];
+
+        // Query back to confirm changes took effect.
+        let got_behavior: usize = msg_send![w, collectionBehavior];
+        let got_level: isize = msg_send![w, level];
+        eprintln!(
+            "[overlay] after set: collectionBehavior={got_behavior:#x} level={got_level}"
+        );
     }
 }
 

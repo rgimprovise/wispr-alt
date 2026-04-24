@@ -10,6 +10,7 @@ pub struct AppState {
     pub recorder: Mutex<audio::Recorder>,
 }
 
+
 #[tauri::command]
 fn start_recording(
     state: tauri::State<AppState>,
@@ -63,18 +64,28 @@ fn check_accessibility() -> bool {
 }
 
 /// Re-apply NSWindow collection behavior + level on the overlay so it
-/// sits above full-screen apps. Called from JS after each show() so we
-/// don't rely on setup-time configuration sticking.
+/// sits above full-screen apps. Called from JS after each show().
+///
+/// NSWindow mutation must run on the main thread; Tauri command handlers
+/// run on an async runtime thread. We dispatch to main via
+/// `run_on_main_thread`.
 #[tauri::command]
 fn configure_overlay(app: tauri::AppHandle) -> Result<(), String> {
     use tauri::Manager;
+
     #[cfg(target_os = "macos")]
     {
         let window = app
             .get_webview_window("overlay")
             .ok_or("overlay window not found")?;
         let ns_window = window.ns_window().map_err(|e| e.to_string())?;
-        perms::make_overlay_floating_over_fullscreen(ns_window);
+        // Raw *mut c_void isn't Send; pass the address as a usize across
+        // the thread boundary and reconstitute on the main thread.
+        let addr = ns_window as usize;
+        app.run_on_main_thread(move || {
+            perms::make_overlay_floating_over_fullscreen(addr as *mut std::ffi::c_void);
+        })
+        .map_err(|e| e.to_string())?;
     }
     #[cfg(not(target_os = "macos"))]
     {

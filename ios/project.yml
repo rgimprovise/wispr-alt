@@ -1,0 +1,76 @@
+# XcodeGen spec — generates wispr-alt.xcodeproj from this declarative
+# config. Avoids checking in the cumbersome Xcode project files.
+#
+# Usage:
+#   brew install xcodegen
+#   cd ios && xcodegen
+#   open wispr-alt.xcodeproj
+name: wispr-alt
+options:
+  bundleIdPrefix: com.wispralt
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: ru
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_STYLE: Automatic
+    # Set DEVELOPMENT_TEAM in Xcode (Signing & Capabilities) — XcodeGen
+    # leaves it blank so each developer signs locally.
+    DEVELOPMENT_TEAM: ""
+
+# Shared App Group for keyboard ↔ main-app communication
+# (must be added under Signing & Capabilities → App Groups in Xcode
+# for BOTH targets, picking the same group ID).
+configFiles:
+  Debug: Configs/Debug.xcconfig
+  Release: Configs/Release.xcconfig
+
+targets:
+  wispr-alt:
+    type: application
+    platform: iOS
+    sources:
+      - path: wispr-alt
+    info:
+      path: wispr-alt/Info.plist
+      properties:
+        CFBundleDisplayName: wispr-alt
+        UILaunchScreen: {}
+        NSMicrophoneUsageDescription: "wispr-alt нужен микрофон для записи и транскрипции вашей речи."
+        CFBundleURLTypes:
+          - CFBundleURLName: com.wispralt.app
+            CFBundleURLSchemes:
+              - wispralt
+        UIBackgroundModes:
+          - audio
+        WISPR_BACKEND_URL: $(WISPR_BACKEND_URL)
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wispralt.app
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
+    dependencies:
+      - target: wispr-alt-keyboard
+
+  wispr-alt-keyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: wispr-alt-keyboard
+    info:
+      path: wispr-alt-keyboard/Info.plist
+      properties:
+        CFBundleDisplayName: wispr-alt
+        NSExtension:
+          NSExtensionAttributes:
+            IsASCIICapable: false
+            PrefersRightToLeft: false
+            PrimaryLanguage: ru-RU
+            RequestsOpenAccess: true
+          NSExtensionPointIdentifier: com.apple.keyboard-service
+          NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.wispralt.app.keyboard

@@ -1,0 +1,12 @@
+# XcodeGen artefacts
+wispr-alt.xcodeproj/
+wispr-alt.xcworkspace/
+
+# Xcode local data
+xcuserdata/
+*.xcuserstate
+
+# DerivedData
+build/
+DerivedData/
+.DS_Store

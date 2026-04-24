@@ -1,0 +1,4 @@
+// Backend URL baked into Debug builds
+WISPR_BACKEND_URL = https:/$()/alrcvscribe.n8nrgimprovise.space
+GCC_PREPROCESSOR_DEFINITIONS = $(inherited) DEBUG=1
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG

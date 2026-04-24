@@ -1,0 +1,25 @@
+# Add this block to your VPS /etc/caddy/Caddyfile (or your Caddy config
+# file). Reload Caddy after: `sudo systemctl reload caddy`.
+#
+# Caddy automatically provisions a Let's Encrypt TLS certificate for
+# this domain on first request, renews it, and forces HTTPS.
+
+alrcvscribe.n8nrgimprovise.space {
+    # Proxy to the backend container which binds to localhost.
+    reverse_proxy 127.0.0.1:8787
+
+    # gzip compression for JSON responses
+    encode gzip
+
+    # Basic access log
+    log {
+        output file /var/log/caddy/wispr-alt.log
+        format json
+    }
+
+    # Optional: increase upload size (default is 32MB — WAV files are small,
+    # but we upload raw audio on every snapshot).
+    request_body {
+        max_size 50MB
+    }
+}

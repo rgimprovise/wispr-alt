@@ -1,125 +1,155 @@
 # wispr-alt — Deploy & package guide
 
-Пошаговая инструкция чтобы **(a)** развернуть backend на Fly.io и **(b)** собрать установщики для macOS и Windows.
+**Настройка:** backend на вашем VPS за Caddy (автоматический HTTPS), установщики собираются локально (macOS) и через GitHub Actions (Windows).
+
+**Домен:** `alrcvscribe.n8nrgimprovise.space` → `79.132.140.13`
 
 ---
 
-## 1 · Backend → Fly.io (~5 мин, один раз)
+## 1 · Backend → ваш VPS (~10 мин, один раз)
 
-Fly.io — бесплатный tier на старт, scale-to-zero когда нет трафика, ~$0 в месяц для beta.
+### 1.1. Залить код на VPS
 
-### 1.1. Установить flyctl
-
+Вариант A — через git (удобнее для обновлений):
 ```bash
-brew install flyctl     # macOS
-# или
-curl -L https://fly.io/install.sh | sh
+ssh user@79.132.140.13
+sudo mkdir -p /opt/wispr-alt
+sudo chown $USER:$USER /opt/wispr-alt
+cd /opt/wispr-alt
+git clone https://github.com/ваш-юзер/wispr-alt.git .
+# или если репо приватный — через deploy key или scp
 ```
 
-### 1.2. Логин / регистрация
-
+Вариант B — через scp (быстрее если репо ещё не на GitHub):
 ```bash
-flyctl auth signup      # первый раз
-# или
-flyctl auth login
+cd ~/Desktop/wispr-alt
+rsync -avz --exclude node_modules --exclude .env backend/ user@79.132.140.13:/opt/wispr-alt/backend/
 ```
 
-### 1.3. Создать приложение
+### 1.2. Создать `.env` на VPS
 
 ```bash
-cd ~/Desktop/wispr-alt/backend
-flyctl launch --no-deploy --name wispr-alt
+ssh user@79.132.140.13
+cd /opt/wispr-alt/backend
+cat > .env <<EOF
+GROQ_API_KEY=gsk_ваш_НОВЫЙ_ключ
+PORT=8787
+EOF
+chmod 600 .env     # никто кроме владельца не читает
 ```
 
-Если имя `wispr-alt` занято, `flyctl` предложит выбрать другое. В этом случае поправьте `app = "..."` в `backend/fly.toml` и в `app/.env.production` замените `VITE_BACKEND_URL` на свой домен (формат `https://ваше-имя.fly.dev`).
+**Важно:** выпустите **отдельный** Groq ключ специально для прод-бэкенда. Старый из dev не используйте — он мог протечь в логи.
 
-### 1.4. Положить Groq-ключ в секреты
+### 1.3. Запустить через docker-compose
 
 ```bash
-flyctl secrets set GROQ_API_KEY=gsk_ваш_новый_ключ
+cd /opt/wispr-alt/backend
+docker compose up -d --build
+docker compose logs -f           # проверить что поднялось
+
+# Проверка с того же VPS:
+curl http://localhost:8787/
+# {"ok":true,"service":"wispr-alt","version":"0.1.0"}
 ```
 
-**Важно:** это ключ, который будет использовать backend в проде. Используйте **новый, отдельный от того, что в `.env`**.
+### 1.4. Подключить Caddy (HTTPS)
 
-### 1.5. Деплой
+Открыть `/etc/caddy/Caddyfile`, добавить блок из `/opt/wispr-alt/backend/Caddyfile.snippet`, либо просто:
 
 ```bash
-flyctl deploy
+sudo cat /opt/wispr-alt/backend/Caddyfile.snippet >> /etc/caddy/Caddyfile
+sudo systemctl reload caddy
+sudo journalctl -u caddy -f      # посмотреть как Caddy выпустит TLS cert
 ```
 
-Через ~2 мин backend будет по `https://wispr-alt.fly.dev`. Проверьте:
+Caddy сам получит Let's Encrypt сертификат на первом запросе (может занять 10–30 сек).
 
+### 1.5. Проверка снаружи
+
+С любой машины:
 ```bash
-curl https://wispr-alt.fly.dev/
-# должно вернуть {"ok":true,"service":"wispr-alt","version":"0.1.0"}
+curl https://alrcvscribe.n8nrgimprovise.space/
+# {"ok":true,"service":"wispr-alt","version":"0.1.0"}
 ```
 
-### 1.6. Обновления
+Если 502 — backend контейнер не поднят. Если SSL-ошибка — Caddy ещё не получил cert, подождите минуту.
+
+### 1.6. Обновления backend в будущем
 
 ```bash
+ssh user@79.132.140.13
+cd /opt/wispr-alt
+git pull
 cd backend
-flyctl deploy          # после правок кода
-flyctl logs            # посмотреть логи
-flyctl status          # статус машины
+docker compose up -d --build
+```
+
+Для смены Groq-ключа:
+```bash
+# правите .env
+docker compose restart
 ```
 
 ---
 
-## 2 · macOS .dmg (локальная сборка)
+## 2 · macOS .dmg
 
-### 2.1. Убедитесь что `app/.env.production` содержит правильный URL
+### 2.1. Уже собран с правильным URL
 
+После последней сборки .dmg смотрит на `https://alrcvscribe.n8nrgimprovise.space`:
+```
+~/Desktop/wispr-alt_0.1.0_x64.dmg
+```
+
+Если меняете домен — пересоберите:
 ```bash
-cat app/.env.production
-# VITE_BACKEND_URL=https://wispr-alt.fly.dev
+cd ~/Desktop/wispr-alt/app
+bun run tauri build --target x86_64-apple-darwin
 ```
 
-Если деплой backend под другим именем — поправьте URL.
-
-### 2.2. Сборка
-
-```bash
-cd app
-bun run tauri build --target aarch64-apple-darwin
+Результат:
+```
+src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/wispr-alt_0.1.0_x64.dmg
 ```
 
-Занимает 5–15 мин первый раз, потом кеш ускоряет. Результат:
+### 2.2. Установка на вашем Mac
 
-```
-src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/wispr-alt_0.1.0_aarch64.dmg
-```
+1. Откройте `.dmg`, перетащите **wispr-alt.app** в Applications
+2. Запустите — macOS скажет "cannot be opened because the developer cannot be verified"
+3. **Обход** (один раз):
+   - System Settings → Privacy & Security → прокрутите вниз → "wispr-alt.app was blocked" → **Open Anyway**
+   - ИЛИ в Finder: правая кнопка на app → Open → Open Anyway
+4. Разрешите **Microphone** когда попросит
+5. При первом F5 → запись → stop: попросит **Automation** для System Events — разрешите
 
-### 2.3. Установка (на вашем Mac)
+### 2.3. Тестирование
 
-Откройте `.dmg`, перетащите **wispr-alt.app** в Applications. Запустите — macOS скажет "cannot be opened because the developer cannot be verified".
-
-**Обход** (один раз):
-- System Settings → Privacy & Security → прокрутите вниз → "wispr-alt.app was blocked" → Open Anyway
-- ИЛИ в Finder: правая кнопка на app → Open → Open
-
-После этого macOS попросит **Microphone** и **Accessibility / Automation** permissions — разрешите.
+- Откройте TextEdit, кликните в документ
+- Нажмите **F5** в любом приложении — pill выплывет сверху
+- Говорите — текст появляется в pill с задержкой ~1–2 сек
+- Нажмите F5 — pill спрячется, текст вставится в TextEdit
 
 ---
 
-## 3 · Windows .msi (через GitHub Actions)
+## 3 · Windows .msi — через GitHub Actions
 
 У вас нет Windows машины, поэтому собираем в CI.
 
-### 3.1. Залить репо на GitHub
+### 3.1. Залить репо на GitHub (если ещё не)
 
 ```bash
 cd ~/Desktop/wispr-alt
-git remote add origin https://github.com/ваш-юзер/wispr-alt.git
+git remote add origin git@github.com:ваш-юзер/wispr-alt.git
 git push -u origin main
 ```
 
-### 3.2. Прописать secrets в репо
+### 3.2. Прописать secrets
 
 GitHub → Settings → Secrets and variables → Actions → New repository secret:
 
 | Name | Value |
 |------|-------|
-| `VITE_BACKEND_URL` | `https://wispr-alt.fly.dev` |
+| `VITE_BACKEND_URL` | `https://alrcvscribe.n8nrgimprovise.space` |
 
 ### 3.3. Запустить сборку
 
@@ -132,61 +162,56 @@ git push --tags
 **Вариант B — вручную:**
 GitHub → Actions → `build` workflow → Run workflow
 
-### 3.4. Скачать артефакты
+Сборка займёт 15–25 мин.
 
-Через 15–25 мин в Actions → run → Artifacts:
-- `macos-dmg` — содержит `.dmg` (дубликат того что вы собрали локально)
-- `windows-installers` — содержит `.exe` (NSIS) и `.msi`
+### 3.4. Скачать и отдать партнёру
 
-Разархивируйте, отправьте партнёру `.exe` (рекомендовано — NSIS даёт лучший UX онбординга).
+GitHub → Actions → запустившийся run → Artifacts:
+- `windows-installers` — архив с `.exe` (NSIS installer, предпочтительнее) и `.msi` (MSI)
 
-### 3.5. Партнёр устанавливает
-
-Партнёр запускает `.exe` → Windows SmartScreen может показать "Windows protected your PC":
-- Кликнуть **More info** → **Run anyway**
-
-Затем стандартный installer. После запуска приложения Windows попросит доступ к микрофону.
+Распакуйте, отправьте `.exe` партнёру.
 
 ---
 
-## 4 · Код-сайнинг (на потом, не блокирует beta)
+## 4 · Партнёр устанавливает (Windows)
 
-Текущие установщики **не подписаны** — появятся предупреждения, но работать всё будет.
+Текст для отправки:
 
-**Для macOS** (когда купите Apple Developer Program за $99/год):
-- Developer ID Application certificate из Xcode
-- Переменные `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` в GitHub secrets
-- Tauri сам подпишет и нотаризует
-- Партнёры не увидят вообще никаких предупреждений
-
-**Для Windows:**
-- EV Code Signing cert (~$300–500/год) — мгновенно проходит SmartScreen
-- OR Standard Code Signing (~$100/год) — SmartScreen "прогревается" за ~500 скачиваний
-- OR Azure Trusted Signing (~$10/мес) — более новый вариант
-
-Пока можно не тратить деньги — предупреждения пугают, но не блокируют.
+> Привет. Скачай отсюда [ссылка].
+>
+> 1. Запусти `.exe`. Если Windows покажет "Windows protected your PC" — кликни **More info** → **Run anyway**. Это потому что приложение пока без официальной подписи (beta).
+>
+> 2. Пройди installer, всё по умолчанию.
+>
+> 3. Запусти wispr-alt из меню Пуск. Разреши доступ к микрофону.
+>
+> 4. Где угодно (Notepad, Word, Slack, Telegram) поставь курсор в текстовое поле и нажми **F5**. Начни говорить.
+>
+> 5. Нажми **F5** ещё раз — текст вставится туда, где курсор.
+>
+> Если что-то не работает — пришли скриншот главного окна приложения (там лог внутри).
 
 ---
 
-## 5 · Быстрая справка для партнёра (Windows)
+## 5 · Troubleshooting
 
-Текст, который можно отправить партнёру:
+| Симптом | Причина | Фикс |
+|---------|---------|------|
+| macOS: "app is damaged" | ad-hoc подпись не распознана | System Settings → Privacy & Security → Open Anyway (первый раз) |
+| macOS: F5 не реагирует после установки | глобальный хоткей требует Accessibility | System Settings → Privacy & Security → Accessibility → добавить wispr-alt, перезапустить |
+| macOS: текст копируется в буфер, но не вставляется | System Events не имеет Automation permission | System Settings → Privacy & Security → Automation → wispr-alt → System Events включить |
+| Приложение говорит "failed to fetch" в логе | backend недоступен или CORS / SSL | `curl https://alrcvscribe.n8nrgimprovise.space/` с любой машины |
+| Fly.io ничего не знаю про это | мы ушли с Fly.io | игнорировать, ничего не надо |
+| Backend контейнер всё время рестартует | проблема с .env или Docker | `docker compose logs` на VPS |
 
-```
-Привет. Скачай отсюда [ссылка на wispr-alt-0.1.0_x64-setup.exe].
+---
 
-1. Запусти .exe. Если Windows скажет "Windows protected your PC" —
-   кликни "More info" → "Run anyway". Это нормально для непод-
-   писанных бета-версий.
+## 6 · Код-сайнинг (когда купите — в будущем)
 
-2. Пройди installer (просто жми Next).
+Пока unsigned — работает, но пугает предупреждениями.
 
-3. Запусти приложение из Пуска. Разреши микрофон когда попросит.
+**macOS:** Apple Developer Program ($99/год) → сертификат "Developer ID Application" в Xcode → добавить в GitHub secrets `APPLE_ID`, `APPLE_PASSWORD` (app-specific), `APPLE_TEAM_ID` → Tauri build сам подпишет + нотаризует. Партнёры не увидят никаких предупреждений.
 
-4. Где угодно (Notepad, Word, Slack, Telegram, браузер) поставь
-   курсор в текстовое поле и нажми F5. Начни говорить.
+**Windows:** Azure Trusted Signing (~$10/мес) — самый дешёвый и новый способ. Или Standard Code Signing cert (~$100/год). EV cert дороже (~$300+) но мгновенно проходит SmartScreen.
 
-5. Нажми F5 ещё раз — текст появится там, куда ты поставил курсор.
-
-Если глючит — пришли скрин лога из главного окна приложения.
-```
+Ни то ни другое не блокирует beta — пока работаем без подписи.

@@ -1,0 +1,25 @@
+# Production deploy for wispr-alt backend on your VPS.
+#
+# Usage:
+#   1. Copy this backend/ folder to the VPS (or `git clone` the whole repo).
+#   2. Create backend/.env with GROQ_API_KEY=gsk_...
+#   3. docker compose up -d --build
+#   4. Add a site block to Caddyfile (see Caddyfile.snippet) and reload Caddy.
+#
+# The service binds to 127.0.0.1:8787 (localhost only) — public HTTPS is
+# Caddy's job, which proxies inbound from your domain to this port.
+
+services:
+  backend:
+    build: .
+    container_name: wispr-alt-backend
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "127.0.0.1:8787:8787"
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8787/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

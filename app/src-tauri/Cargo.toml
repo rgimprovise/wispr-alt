@@ -27,3 +27,8 @@ cpal = "0.15"
 hound = "3.5"
 arboard = "3.4"
 
+# enigo is only needed for text injection on Windows; on macOS we use
+# osascript/System Events which does not require this dependency.
+[target.'cfg(target_os = "windows")'.dependencies]
+enigo = "0.2"
+

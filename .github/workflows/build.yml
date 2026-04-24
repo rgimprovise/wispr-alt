@@ -1,0 +1,84 @@
+# GitHub Actions workflow: builds Tauri app for macOS and Windows.
+#
+# Usage:
+#   1. Push this repo to GitHub (private or public).
+#   2. In repo Settings → Secrets → Actions, add:
+#        VITE_BACKEND_URL = https://wispr-alt.fly.dev   (your Fly.io URL)
+#   3. Push a tag like v0.1.0 (or trigger manually via workflow_dispatch)
+#      to produce installers as release artifacts.
+#
+# Result:
+#   - macOS:   wispr-alt_<ver>_aarch64.dmg   (Apple Silicon)
+#   - Windows: wispr-alt_<ver>_x64-setup.exe  (NSIS installer)
+#   - Windows: wispr-alt_<ver>_x64_en-US.msi  (MSI installer)
+#
+# Neither build is signed. macOS users need right-click → Open on first
+# launch. Windows SmartScreen may warn — click More info → Run anyway.
+# Proper code signing is a follow-up: Apple Developer ID ($99/yr) and
+# Windows EV cert (or Azure Trusted Signing).
+
+name: build
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            rust-target: aarch64-apple-darwin
+            artifact-name: macos-dmg
+          - platform: windows-latest
+            rust-target: x86_64-pc-windows-msvc
+            artifact-name: windows-installers
+
+    runs-on: ${{ matrix.platform }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-target }}
+
+      - name: Rust cache
+        uses: swatinem/rust-cache@v2
+        with:
+          workspaces: "app/src-tauri -> target"
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.3"
+
+      - name: Install frontend deps
+        working-directory: app
+        run: bun install --frozen-lockfile
+
+      - name: Build Tauri app
+        working-directory: app
+        env:
+          VITE_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL || 'http://localhost:8787' }}
+        run: bun run tauri build --target ${{ matrix.rust-target }}
+
+      - name: Upload artifacts (macOS)
+        if: matrix.platform == 'macos-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: app/src-tauri/target/${{ matrix.rust-target }}/release/bundle/dmg/*.dmg
+
+      - name: Upload artifacts (Windows)
+        if: matrix.platform == 'windows-latest'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact-name }}
+          path: |
+            app/src-tauri/target/${{ matrix.rust-target }}/release/bundle/nsis/*.exe
+            app/src-tauri/target/${{ matrix.rust-target }}/release/bundle/msi/*.msi

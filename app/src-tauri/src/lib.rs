@@ -75,10 +75,18 @@ pub fn run() {
             let shortcut = Shortcut::new(None, Code::F5);
             app.global_shortcut().register(shortcut)?;
 
-            // Create floating overlay window. Always-on-top, borderless.
-            // Position: top-left corner, 40px from edges (safe area visible
-            // on every display). Visible on startup for debugging; later
-            // we'll hide when idle.
+            // Create floating overlay window. Hidden on startup; shown
+            // on demand while recording. Key properties:
+            //   - always_on_top: floats above other app windows
+            //   - visible_on_all_workspaces: appears over full-screen apps
+            //     and on every macOS Space (NSWindowCollectionBehavior
+            //     CanJoinAllSpaces)
+            //   - decorations(false): no titlebar; pure pill
+            //   - skip_taskbar: doesn't show in Dock / Alt-Tab
+            //   - transparent: lets the pill's rounded glass effect show
+            //     through (window corners are transparent)
+            let overlay_w = 460.0;
+            let overlay_h = 122.0;
             let overlay = WebviewWindowBuilder::new(
                 app,
                 "overlay",
@@ -86,16 +94,24 @@ pub fn run() {
             )
             .title("wispr-alt")
             .decorations(false)
+            .transparent(true)
             .always_on_top(true)
+            .visible_on_all_workspaces(true)
             .skip_taskbar(true)
             .resizable(false)
-            .inner_size(460.0, 122.0)
-            .position(40.0, 60.0)
-            .visible(true)
+            .focused(false) // don't steal focus from the user's target app
+            .inner_size(overlay_w, overlay_h)
+            .visible(false) // start hidden — shown on F5
             .build()?;
-            // On macOS, floating windows sometimes need an explicit show
-            // after build to come to front when always_on_top is set.
-            let _ = overlay.show();
+
+            // Position at top-center of the primary monitor.
+            if let Some(monitor) = app.primary_monitor()? {
+                let size = monitor.size();
+                let scale = monitor.scale_factor();
+                let logical_w = size.width as f64 / scale;
+                let x = (logical_w - overlay_w) / 2.0;
+                let _ = overlay.set_position(tauri::LogicalPosition::new(x, 16.0));
+            }
 
             Ok(())
         })

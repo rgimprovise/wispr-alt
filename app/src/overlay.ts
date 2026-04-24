@@ -144,4 +144,11 @@ listen<StateChangePayload>("overlay-state", (e) => {
   render(e.payload.state, e.payload.text);
 });
 
+// Show/hide animation is driven by the main window so exit plays BEFORE
+// the OS-level hide. We simply toggle the .visible class on <body> and CSS
+// handles the transform + opacity transition.
+listen<boolean>("overlay-visible", (e) => {
+  document.body.classList.toggle("visible", e.payload);
+});
+
 window.addEventListener("resize", recomputeTarget);

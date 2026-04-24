@@ -32,13 +32,26 @@ function log(msg: string) {
   el.textContent = `[${ts}] ${msg}\n` + el.textContent;
 }
 
+const ANIM_MS = 220;
+
 async function setOverlayVisible(visible: boolean) {
   try {
     const windows = await getAllWebviewWindows();
     const overlay = windows.find((w) => w.label === "overlay");
     if (!overlay) return;
-    if (visible) await overlay.show();
-    else await overlay.hide();
+
+    if (visible) {
+      await overlay.show();
+      // Give the OS one frame to materialize the window, then trigger the
+      // enter-animation inside the overlay webview.
+      await new Promise((r) => setTimeout(r, 16));
+      await emit("overlay-visible", true);
+    } else {
+      // Play exit animation first, then hide at OS level.
+      await emit("overlay-visible", false);
+      await new Promise((r) => setTimeout(r, ANIM_MS));
+      await overlay.hide();
+    }
   } catch (err) {
     console.error("overlay toggle", err);
   }
@@ -138,9 +151,10 @@ async function stopAndFinalize() {
 
     if (clean.length > 0) {
       updateOverlay("transcribing", clean);
-      // small delay so user sees the final text briefly before overlay hides
-      await new Promise((r) => setTimeout(r, 150));
       await invoke("paste", { text: clean });
+      // Leave the cleaned transcript visible briefly so the user gets
+      // confirmation of what was inserted before the overlay slides out.
+      await new Promise((r) => setTimeout(r, 600));
     }
     await setOverlayVisible(false);
     setStatus("idle");

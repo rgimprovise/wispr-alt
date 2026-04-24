@@ -18,6 +18,22 @@ body {
   min-height: 100vh;
   display: flex;
   align-items: stretch;
+  /* ── Enter / exit animation ──
+     Body starts translated up & transparent; gets the .visible class when
+     the main window wants us on screen. Matches ANIM_MS in main.ts. */
+  opacity: 0;
+  transform: translateY(-18px) scale(0.98);
+  transform-origin: top center;
+  transition:
+    opacity 220ms var(--ease-out),
+    transform 220ms var(--ease-out);
+  pointer-events: none;
+}
+
+body.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
 }
 
 /* ── Shell ──────────────────────────────────────────────── */

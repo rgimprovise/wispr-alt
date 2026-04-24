@@ -38,10 +38,14 @@ async function setOverlayVisible(visible: boolean) {
   try {
     const windows = await getAllWebviewWindows();
     const overlay = windows.find((w) => w.label === "overlay");
-    if (!overlay) return;
+    if (!overlay) {
+      log(`overlay window NOT FOUND (have: ${windows.map((w) => w.label).join(",")})`);
+      return;
+    }
 
     if (visible) {
       await overlay.show();
+      log("overlay shown");
       // Give the OS one frame to materialize the window, then trigger the
       // enter-animation inside the overlay webview.
       await new Promise((r) => setTimeout(r, 16));
@@ -51,9 +55,10 @@ async function setOverlayVisible(visible: boolean) {
       await emit("overlay-visible", false);
       await new Promise((r) => setTimeout(r, ANIM_MS));
       await overlay.hide();
+      log("overlay hidden");
     }
   } catch (err) {
-    console.error("overlay toggle", err);
+    log(`overlay toggle failed: ${err}`);
   }
 }
 

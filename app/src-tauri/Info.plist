@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>wispr-alt нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
+
+  <key>NSAppleEventsUsageDescription</key>
+  <string>wispr-alt использует System Events для вставки распознанного текста в активное приложение.</string>
+
+  <!-- Enables arbitrary https endpoints (our backend) and allows the
+       transparent overlay window behaviour to persist across Spaces. -->
+  <key>LSUIElement</key>
+  <false/>
+</dict>
+</plist>

@@ -104,14 +104,19 @@ pub fn run() {
             .visible(false) // start hidden — shown on F5
             .build()?;
 
-            // Position at top-center of the primary monitor.
-            if let Some(monitor) = app.primary_monitor()? {
+            // Position at top-center of the primary monitor. Errors here
+            // should never abort startup — fall back to the default 0,0.
+            if let Ok(Some(monitor)) = app.primary_monitor() {
                 let size = monitor.size();
                 let scale = monitor.scale_factor();
                 let logical_w = size.width as f64 / scale;
                 let x = (logical_w - overlay_w) / 2.0;
                 let _ = overlay.set_position(tauri::LogicalPosition::new(x, 16.0));
+            } else {
+                eprintln!("[overlay] primary_monitor unavailable; using default position");
             }
+
+            eprintln!("[overlay] window created: {}", overlay.label());
 
             Ok(())
         })

@@ -1,104 +1,182 @@
-:root {
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-  color: #1a1a1a;
-  background: #f7f7f8;
-}
+/* Main (settings) window — uses ALRCV design tokens from tokens.css.
+   This is still a dev placeholder, not the final Settings layout, but
+   visually consistent with the design system. */
 
 body {
-  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
 }
 
 .container {
-  max-width: 520px;
+  max-width: 560px;
   margin: 0 auto;
-  padding: 2rem 1.5rem;
+  padding: 28px 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 
-h1 {
-  font-size: 1.5rem;
-  margin: 0 0 0.5rem;
+/* ── Brand ─────────────────────────────────────────────── */
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
+.brand__mark {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, var(--rec) 0%, var(--rec-hi) 100%);
+  box-shadow:
+    0 6px 16px rgba(239, 68, 68, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+}
+
+.brand__mark::after {
+  content: '';
+  position: absolute;
+  inset: 50% 50% auto auto;
+  transform: translate(50%, -50%);
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+}
+
+/* ── Hint ──────────────────────────────────────────────── */
 .hint {
-  color: #666;
-  font-size: 0.9rem;
-  margin: 0 0 1.5rem;
+  margin: 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
-kbd {
-  background: #eee;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  padding: 1px 6px;
-  font-size: 0.85em;
-  font-family: ui-monospace, SFMono-Regular, monospace;
-}
-
-.status {
-  display: inline-block;
-  padding: 0.5rem 1rem;
-  border-radius: 999px;
+.kcap {
+  height: 22px;
+  min-width: 22px;
+  padding: 0 7px;
+  border-radius: 5px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 1px 0 var(--border-subtle), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
+  font-family: var(--font-ui);
+  font-size: 11px;
   font-weight: 600;
-  font-size: 0.95rem;
-  margin-bottom: 1rem;
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.status--idle {
-  background: #e5e7eb;
-  color: #374151;
+/* ── Status badge ──────────────────────────────────────── */
+.status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  align-self: flex-start;
+  transition: all var(--d-quick) var(--ease-out);
+}
+
+.status__dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  flex-shrink: 0;
+  transition: all var(--d-quick) var(--ease-out);
 }
 
 .status--recording {
-  background: #fee2e2;
-  color: #991b1b;
-  animation: pulse 1.2s ease-in-out infinite;
+  background: rgba(239, 68, 68, 0.10);
+  color: var(--rec);
+  border-color: rgba(239, 68, 68, 0.25);
+}
+
+.status--recording .status__dot {
+  background: var(--rec);
+  box-shadow: 0 0 10px var(--rec);
+  animation: rec-dot 1.2s var(--ease-out) infinite;
 }
 
 .status--transcribing {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.12);
+  color: var(--warn);
+  border-color: rgba(245, 158, 11, 0.25);
 }
 
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-}
+.status--transcribing .status__dot { background: var(--warn); }
 
+/* ── Row ───────────────────────────────────────────────── */
 .row {
   display: flex;
-  gap: 0.5rem;
-  margin-bottom: 1rem;
+  gap: 8px;
 }
 
-button {
-  padding: 0.5rem 1rem;
-  border: 1px solid #d1d5db;
-  border-radius: 6px;
-  background: white;
+/* ── Button ────────────────────────────────────────────── */
+.btn {
+  height: 32px;
+  padding: 0 14px;
+  border-radius: 8px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  font-size: 0.9rem;
+  transition: all var(--d-quick) var(--ease-out);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
-button:hover {
-  background: #f3f4f6;
+.btn--secondary {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--secondary:hover {
+  background: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
+.btn--secondary:active {
+  background: var(--surface-active);
+}
+
+/* ── Log ───────────────────────────────────────────────── */
+.log-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 #log {
-  background: #111;
-  color: #d4d4d4;
-  padding: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  min-height: 120px;
-  max-height: 240px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--surface-sunk);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-secondary);
+  border-radius: var(--r-lg);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 16px;
+  min-height: 140px;
+  max-height: 280px;
   overflow-y: auto;
   white-space: pre-wrap;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root { color: #e5e7eb; background: #1a1a1a; }
-  button { background: #262626; color: #e5e7eb; border-color: #404040; }
-  button:hover { background: #333; }
-  kbd { background: #333; border-color: #555; color: #eee; }
-  .hint { color: #999; }
 }

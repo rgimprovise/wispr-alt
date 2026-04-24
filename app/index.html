@@ -1,7 +1,8 @@
 <!doctype html>
-<html lang="en">
+<html lang="ru" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
+    <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>wispr-alt</title>
@@ -9,16 +10,29 @@
   </head>
   <body>
     <main class="container">
-      <h1>wispr-alt</h1>
-      <p class="hint">Press <kbd>F5</kbd> anywhere to toggle recording.</p>
-
-      <div id="status" class="status status--idle">idle</div>
-
-      <div class="row">
-        <button id="test-paste">Test paste injection</button>
+      <div class="brand">
+        <div class="brand__mark"></div>
+        <div>
+          <div class="t-h1">ALRCV</div>
+          <div class="t-caption">wispr-alt · dev</div>
+        </div>
       </div>
 
-      <pre id="log"></pre>
+      <p class="hint">Нажмите <kbd class="kcap">F5</kbd> в любом приложении для записи.</p>
+
+      <div id="status" class="status status--idle">
+        <span class="status__dot"></span>
+        <span class="status__label">idle</span>
+      </div>
+
+      <div class="row">
+        <button id="test-paste" class="btn btn--secondary">Test paste injection</button>
+      </div>
+
+      <div class="log-wrap">
+        <div class="t-caption">Лог</div>
+        <pre id="log"></pre>
+      </div>
     </main>
   </body>
 </html>

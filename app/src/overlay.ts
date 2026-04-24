@@ -7,28 +7,21 @@ interface StateChangePayload {
   text?: string;
 }
 
+// ─── DOM refs ──────────────────────────────────────────────────────────────
 const pill = document.getElementById("pill") as HTMLDivElement;
+const stateLabel = document.getElementById("state-label") as HTMLSpanElement;
+const timerEl = document.getElementById("timer") as HTMLSpanElement;
 const textEl = document.getElementById("text") as HTMLDivElement;
 const windowEl = document.getElementById("window") as HTMLDivElement;
 
 // ─── Smooth teletype scroll ───────────────────────────────────────────────
-//
-// Rate-limited velocity controller (trapezoidal profile). Each frame:
-//   desired_v = sign(dx) · min(V_MAX, |dx| · K)
-//   v        += clamp(desired_v − v, ±A_MAX)
-//   offset   += v
-//
-// Effect:
-//   - far from target → v ramps smoothly from 0 up to V_MAX over ~300ms
-//   - cruising        → v stays at V_MAX
-//   - approaching     → desired_v decays linearly, v smoothly follows down
-//   - arrived         → v decays to 0, loop exits
-//
-// No instantaneous velocity changes anywhere → no visual jumps.
+// Rate-limited velocity controller — trapezoidal profile.
+// Keeps the right edge of the text aligned with the right edge of the
+// window; new words appear on the right, older text scrolls out left.
 
-const V_MAX = 1.8;   // px/frame max speed (~108 px/s at 60fps; ~9 chars/sec)
-const A_MAX = 0.07;  // px/frame² max acceleration (reaches V_MAX in ~26 frames ≈ 430ms)
-const K = 0.15;      // gain for deceleration near target (starts slowing below ~12px)
+const V_MAX = 1.8;
+const A_MAX = 0.07;
+const K = 0.15;
 const EPS_POS = 0.4;
 const EPS_VEL = 0.05;
 
@@ -43,8 +36,6 @@ function applyTransform() {
 
 function animate() {
   const dx = targetOffset - currentOffset;
-
-  // Stop condition: close enough AND moving slowly enough.
   if (Math.abs(dx) < EPS_POS && Math.abs(velocity) < EPS_VEL) {
     currentOffset = targetOffset;
     velocity = 0;
@@ -52,27 +43,22 @@ function animate() {
     rafHandle = null;
     return;
   }
-
   const sign = Math.sign(dx);
   const desiredSpeed = Math.min(V_MAX, Math.abs(dx) * K);
   const desiredVelocity = sign * desiredSpeed;
-
   const dv = desiredVelocity - velocity;
   if (Math.abs(dv) > A_MAX) {
     velocity += Math.sign(dv) * A_MAX;
   } else {
     velocity = desiredVelocity;
   }
-
   currentOffset += velocity;
   applyTransform();
   rafHandle = requestAnimationFrame(animate);
 }
 
 function kickAnimation() {
-  if (rafHandle === null) {
-    rafHandle = requestAnimationFrame(animate);
-  }
+  if (rafHandle === null) rafHandle = requestAnimationFrame(animate);
 }
 
 function recomputeTarget() {
@@ -81,24 +67,65 @@ function recomputeTarget() {
   kickAnimation();
 }
 
+// ─── Timer ─────────────────────────────────────────────────────────────────
+let recordingStartedAt: number | null = null;
+let timerInterval: number | null = null;
+
+function formatDuration(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
+
+function startTimer() {
+  recordingStartedAt = performance.now();
+  timerEl.textContent = "0:00";
+  if (timerInterval !== null) window.clearInterval(timerInterval);
+  timerInterval = window.setInterval(() => {
+    if (recordingStartedAt === null) return;
+    const ms = performance.now() - recordingStartedAt;
+    timerEl.textContent = formatDuration(ms);
+  }, 250);
+}
+
+function freezeTimer() {
+  if (timerInterval !== null) {
+    window.clearInterval(timerInterval);
+    timerInterval = null;
+  }
+  // Leave the displayed value as-is so user sees duration during transcribing.
+}
+
+function resetTimer() {
+  freezeTimer();
+  recordingStartedAt = null;
+  timerEl.textContent = "0:00";
+}
+
+// ─── State machine / render ────────────────────────────────────────────────
+const STATE_LABEL: Record<State, string> = {
+  idle: "Готов",
+  recording: "Запись",
+  transcribing: "Обработка",
+};
+
+let prevState: State = "idle";
+
 function render(state: State, text?: string) {
+  pill.dataset.state = state;
   pill.className = `pill pill--${state}`;
+  stateLabel.textContent = STATE_LABEL[state];
 
-  const display =
-    text && text.trim().length > 0
-      ? text
-      : state === "recording"
-      ? "listening…"
-      : state === "transcribing"
-      ? "transcribing…"
-      : "idle";
+  // Timer transitions
+  if (state === "recording" && prevState !== "recording") startTimer();
+  if (state === "transcribing" && prevState === "recording") freezeTimer();
+  if (state === "idle" && prevState !== "idle") resetTimer();
+  prevState = state;
 
-  // If state changed to a short placeholder, snap back to the start.
-  const isPlaceholder = !text || text.trim().length === 0;
-  textEl.textContent = display;
-
-  if (isPlaceholder) {
-    // Snap instantly (no scroll needed for placeholder text).
+  const hasText = !!text && text.trim().length > 0;
+  if (!hasText) {
+    textEl.textContent = "";
     currentOffset = 0;
     targetOffset = 0;
     velocity = 0;
@@ -106,16 +133,15 @@ function render(state: State, text?: string) {
     return;
   }
 
-  // Measure in the next frame so the browser has applied the new textContent.
+  textEl.textContent = text!;
   requestAnimationFrame(recomputeTarget);
 }
 
-// Initial state
 render("idle");
 
+// ─── Event wiring ──────────────────────────────────────────────────────────
 listen<StateChangePayload>("overlay-state", (e) => {
   render(e.payload.state, e.payload.text);
 });
 
-// Re-align on window resize (rare, but keeps us robust)
 window.addEventListener("resize", recomputeTarget);

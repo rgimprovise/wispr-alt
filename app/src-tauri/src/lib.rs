@@ -89,7 +89,7 @@ pub fn run() {
             .always_on_top(true)
             .skip_taskbar(true)
             .resizable(false)
-            .inner_size(560.0, 60.0)
+            .inner_size(460.0, 122.0)
             .position(40.0, 60.0)
             .visible(true)
             .build()?;

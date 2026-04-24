@@ -17,7 +17,10 @@ function setStatus(next: RecordingState, detail?: string) {
   const el = document.querySelector<HTMLDivElement>("#status");
   if (el) {
     el.className = `status status--${next}`;
-    el.textContent = detail ? `${next} — ${detail}` : next;
+    const label = el.querySelector<HTMLSpanElement>(".status__label");
+    if (label) {
+      label.textContent = detail ? `${next} · ${detail}` : next;
+    }
   }
   updateOverlay(next, lastPartial);
 }

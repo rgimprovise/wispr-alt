@@ -30,7 +30,7 @@ export interface TranscribeResult {
 }
 
 const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
-const LLM_MODEL = "gpt-4o-mini";
+const LLM_MODEL = "gpt-5-nano";
 
 /**
  * Russian-context priming for the transcriber. Whisper / gpt-4o-transcribe

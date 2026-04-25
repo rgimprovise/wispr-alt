@@ -120,8 +120,9 @@ async function cleanWithGpt(raw: string, apiKey: string): Promise<string> {
     },
     body: JSON.stringify({
       model: LLM_MODEL,
-      temperature: 0.1,
-      max_tokens: 1024,
+      // GPT-5 family uses max_completion_tokens instead of max_tokens.
+      // The new name is also accepted by gpt-4o family — safe for both.
+      max_completion_tokens: 1024,
       messages: [
         { role: "system", content: POSTPROCESS_SYSTEM },
         { role: "user", content: raw },

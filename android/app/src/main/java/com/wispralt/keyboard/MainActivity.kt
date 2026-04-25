@@ -7,8 +7,6 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
-import android.text.TextUtils
-import android.view.Gravity
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.TextView
@@ -183,8 +181,7 @@ class MainActivity : AppCompatActivity() {
             Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES,
         ) ?: return false
         val needle = "$packageName/${WisprAccessibilityService::class.java.name}"
-        return TextUtils.SimpleStringSplitter(':').apply { setString(flat) }
-            .asSequence().any { it.equals(needle, ignoreCase = true) }
+        return flat.split(':').any { it.equals(needle, ignoreCase = true) }
     }
 
     private fun hasNotifications(): Boolean {

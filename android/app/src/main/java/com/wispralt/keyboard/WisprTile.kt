@@ -24,11 +24,9 @@ class WisprTile : TileService() {
 
     override fun onClick() {
         super.onClick()
-        // Briefly show "active" while we kick off the overlay.
+        // Briefly show "active" while we kick off the overlay; the tile
+        // returns to STATE_INACTIVE on the next onStartListening cycle.
         qsTile?.apply { state = Tile.STATE_ACTIVE; updateTile() }
         WisprService.startDictation(this)
-        // Reset tile state after a moment.
-        qsTile?.postDelayed?.let { /* no-op for older devices */ }
-        // Restore inactive look on next listen cycle.
     }
 }

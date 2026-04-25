@@ -2,9 +2,9 @@
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
     android:accessibilityEventTypes="typeViewFocused|typeWindowStateChanged|typeViewClicked"
     android:accessibilityFeedbackType="feedbackGeneric"
-    android:accessibilityFlags="flagRequestEnhancedWebAccessibility|flagRetrieveInteractiveWindows"
+    android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds|flagDefault"
     android:canRetrieveWindowContent="true"
+    android:canPerformGestures="false"
     android:description="@string/accessibility_service_description"
     android:notificationTimeout="100"
-    android:packageNames=""
     android:settingsActivity="com.wispralt.keyboard.MainActivity" />

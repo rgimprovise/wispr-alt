@@ -32,7 +32,7 @@ rsync -avz --exclude node_modules --exclude .env backend/ user@79.132.140.13:/op
 ssh user@79.132.140.13
 cd /opt/wispr-alt/backend
 cat > .env <<EOF
-GROQ_API_KEY=gsk_ваш_НОВЫЙ_ключ
+OPENAI_API_KEY=sk-...
 PORT=8787
 EOF
 chmod 600 .env     # никто кроме владельца не читает

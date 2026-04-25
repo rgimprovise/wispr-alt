@@ -1,9 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Permissions -->
+    <!-- Core permissions -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- Floating overlay over other apps (user must grant in settings) -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Foreground service to keep us alive while overlay is up -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
         android:label="wispr-alt"
@@ -13,7 +21,7 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.WisprAlt">
 
-        <!-- Setup / info screen. Launched from the app icon. -->
+        <!-- Onboarding / control panel -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -23,18 +31,38 @@
             </intent-filter>
         </activity>
 
-        <!-- The Input Method Editor itself. Declared as a Service. -->
+        <!-- Foreground service: owns the overlay + recording lifecycle.
+             Started when the user taps the QS tile, notification action,
+             or the launcher's "Dictate now" shortcut. -->
         <service
-            android:name=".KeyboardService"
-            android:label="wispr-alt keyboard"
-            android:permission="android.permission.BIND_INPUT_METHOD"
+            android:name=".WisprService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- Accessibility service: finds the focused EditText in the
+             foreground app and inserts the cleaned transcript. -->
+        <service
+            android:name=".WisprAccessibilityService"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
             android:exported="true">
             <intent-filter>
-                <action android:name="android.view.InputMethod" />
+                <action android:name="android.accessibilityservice.AccessibilityService" />
             </intent-filter>
             <meta-data
-                android:name="android.view.im"
-                android:resource="@xml/method" />
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <!-- Quick Settings tile: swipe down twice → tap → starts dictation -->
+        <service
+            android:name=".WisprTile"
+            android:icon="@drawable/ic_status"
+            android:label="wispr-alt"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
         </service>
     </application>
 

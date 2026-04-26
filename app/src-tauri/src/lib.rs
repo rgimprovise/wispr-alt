@@ -245,6 +245,33 @@ pub fn run() {
             get_hotkey,
             set_hotkey
         ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri application")
+        .run(|app_handle, event| {
+            // Clean shutdown: when the user closes the main window we want
+            // the entire process to exit, not just the window. Otherwise
+            // the hidden overlay window keeps the WebView2 host process
+            // alive on Windows and the user has to use Task Manager.
+            //
+            // We also stop any active recording first so cpal releases
+            // the microphone cleanly and the snapshot-tick thread breaks
+            // out of its loop instead of being killed mid-iteration.
+            if let tauri::RunEvent::WindowEvent {
+                label,
+                event: tauri::WindowEvent::CloseRequested { .. },
+                ..
+            } = &event
+            {
+                if label == "main" {
+                    eprintln!("[lifecycle] main window close requested → exiting");
+                    let state = app_handle.state::<AppState>();
+                    let mut rec = state.recorder.lock().unwrap();
+                    if rec.is_recording() {
+                        let _ = rec.stop();
+                    }
+                    drop(rec);
+                    app_handle.exit(0);
+                }
+            }
+        });
 }

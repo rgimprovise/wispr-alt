@@ -1,29 +1,35 @@
 <!doctype html>
-<html lang="ru" data-theme="dark">
+<html lang="ru" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>wispr-alt overlay</title>
+    <title>Беловик</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
     <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/overlay.css" />
     <script type="module" src="/src/overlay.ts" defer></script>
   </head>
   <body>
-    <div id="pill" class="pill pill--idle" data-state="idle">
-      <!-- Header row: state chip · language · timer · waveform -->
+    <div id="pill" class="pill" data-state="idle">
+      <!-- Header row: state chip · language · waveform · timer -->
       <div class="pill__head">
-        <span class="state-chip">
+        <div class="state-chip">
           <span class="state-dot"></span>
           <span class="state-label" id="state-label">Готов</span>
-        </span>
-        <span class="lang-hint">RU · Auto</span>
+        </div>
+        <span class="lang-hint">RU</span>
         <div class="spacer"></div>
-        <span class="timer" id="timer">0:00</span>
-        <div class="waveform" id="waveform">
+        <div class="waveform" id="waveform" aria-hidden="true">
           <span></span><span></span><span></span><span></span>
           <span></span><span></span><span></span><span></span>
           <span></span><span></span>
         </div>
+        <span class="timer" id="timer">0:00</span>
       </div>
 
       <!-- Live transcript with teletype scroll + caret -->
@@ -36,9 +42,10 @@
 
       <!-- Footer row: hotkey hints -->
       <div class="pill__foot">
-        <span class="foot-label">Нажать</span>
-        <kbd class="kcap">F5</kbd>
-        <span class="foot-label foot-label--right">чтобы закончить</span>
+        <span class="foot-label" id="foot-label">Удерживайте чтобы записать</span>
+        <div class="spacer"></div>
+        <kbd class="kcap">fn</kbd>
+        <kbd class="kcap">Space</kbd>
       </div>
     </div>
   </body>

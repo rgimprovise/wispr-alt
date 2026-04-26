@@ -1,22 +1,31 @@
 <!doctype html>
-<html lang="ru" data-theme="dark">
+<html lang="ru" data-theme="light">
   <head>
     <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Беловик</title>
+
+    <!-- Belovik typography: Manrope (UI) + Fraunces (display) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT@9..144,400..700,0..100&family=JetBrains+Mono:wght@400;500;600&display=swap"
+    />
+
     <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/styles.css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>wispr-alt</title>
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
     <main class="container">
-      <div class="brand">
-        <div class="brand__mark"></div>
-        <div>
-          <div class="t-h1">ALRCV</div>
-          <div class="t-caption">wispr-alt · dev</div>
+      <header class="brand">
+        <div class="brand__mark" aria-hidden="true"></div>
+        <div class="brand__lockup">
+          <div class="t-h1">Беловик</div>
+          <div class="t-caption">Голосовой интерфейс для работы с текстом</div>
         </div>
-      </div>
+      </header>
 
       <p class="hint">
         Нажмите <kbd class="kcap" id="hotkey-hint">F5</kbd> в любом приложении для записи.
@@ -24,10 +33,9 @@
 
       <div id="status" class="status status--idle">
         <span class="status__dot"></span>
-        <span class="status__label">idle</span>
+        <span class="status__label">готов</span>
       </div>
 
-      <!-- Settings: hotkey picker -->
       <section class="settings">
         <div class="t-caption">Настройки</div>
         <div class="setting-row">
@@ -42,7 +50,7 @@
       </section>
 
       <div class="row">
-        <button id="test-paste" class="btn btn--secondary">Test paste injection</button>
+        <button id="test-paste" class="btn btn--secondary">Проверить вставку</button>
       </div>
 
       <div class="log-wrap">

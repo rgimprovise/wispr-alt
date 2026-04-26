@@ -1,4 +1,46 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Беловик palette — single source of truth for Android.
+  Light-first; dark variant in values-night/colors.xml.
+  Keep in sync with app/src/tokens.css.
+-->
 <resources>
-    <color name="ic_launcher_background">#0E0E10</color>
+    <!-- Brand neutrals -->
+    <color name="paper">#FFF4F1EC</color>
+    <color name="paper_soft">#FFF8F6F1</color>
+    <color name="paper_pure">#FFFCFAF6</color>
+    <color name="mint">#FFECEFEA</color>
+    <color name="silver">#FFD8D6D0</color>
+    <color name="silver_soft">#FFE5E2DB</color>
+
+    <color name="ink">#FF15171A</color>
+    <color name="graphite">#FF1F2733</color>
+    <color name="graphite_soft">#FF2A3340</color>
+
+    <color name="text_primary">#FF15171A</color>
+    <color name="text_secondary">#FF555A63</color>
+    <color name="text_tertiary">#FF8A8E96</color>
+    <color name="text_muted">#FFB6B5AE</color>
+    <color name="text_inverse">#FFFCFAF6</color>
+
+    <color name="bg_base">#FFF4F1EC</color>
+    <color name="surface_1">#FFFCFAF6</color>
+    <color name="surface_2">#FFF0EDE6</color>
+    <color name="surface_sunk">#FFE8E5DD</color>
+    <color name="surface_active">#FFDEDAD0</color>
+    <color name="surface_mint">#FFECEFEA</color>
+
+    <color name="border_subtle">#17151719</color>
+    <color name="border_strong">#29151719</color>
+
+    <!-- Semantic — graphite recording, not red -->
+    <color name="rec">#FF1F2733</color>
+    <color name="rec_glow">#2D1F2733</color>
+    <color name="transcribing">#FF6B7A8F</color>
+    <color name="warn">#FFB5803A</color>
+    <color name="success">#FF5C7A5A</color>
+    <color name="error">#FF8E3A3A</color>
+
+    <!-- Launcher icon background (paper-soft for adaptive icon) -->
+    <color name="ic_launcher_background">#FFF4F1EC</color>
 </resources>

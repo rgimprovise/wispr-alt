@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Dark variant — keeps in sync with tokens.css [data-theme="dark"]. -->
+<resources>
+    <color name="paper">#FF131418</color>
+    <color name="paper_soft">#FF181A1F</color>
+    <color name="paper_pure">#FF0E0F12</color>
+    <color name="mint">#FF1A1D22</color>
+    <color name="silver">#FF2C2F35</color>
+    <color name="silver_soft">#FF23252B</color>
+
+    <color name="ink">#FFF0EDE6</color>
+    <color name="graphite">#FFC7CFDD</color>
+    <color name="graphite_soft">#FFA8B0BD</color>
+
+    <color name="text_primary">#FFF0EDE6</color>
+    <color name="text_secondary">#FFA8AAB0</color>
+    <color name="text_tertiary">#FF6E7079</color>
+    <color name="text_muted">#FF4A4C53</color>
+    <color name="text_inverse">#FF15171A</color>
+
+    <color name="bg_base">#FF131418</color>
+    <color name="surface_1">#FF181A1F</color>
+    <color name="surface_2">#FF1F2128</color>
+    <color name="surface_sunk">#FF0F1014</color>
+    <color name="surface_active">#FF272A32</color>
+    <color name="surface_mint">#FF1A1D22</color>
+
+    <color name="border_subtle">#17FFFFFF</color>
+    <color name="border_strong">#2DFFFFFF</color>
+
+    <color name="rec">#FFC7CFDD</color>
+    <color name="rec_glow">#38C7CFDD</color>
+    <color name="transcribing">#FF8A9DB4</color>
+    <color name="warn">#FFD7A86A</color>
+    <color name="success">#FF8EB089</color>
+    <color name="error">#FFC97474</color>
+
+    <color name="ic_launcher_background">#FF131418</color>
+</resources>

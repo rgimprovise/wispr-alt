@@ -3,10 +3,10 @@
 <plist version="1.0">
 <dict>
   <key>NSMicrophoneUsageDescription</key>
-  <string>wispr-alt нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
+  <string>Беловик нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
 
   <key>NSAppleEventsUsageDescription</key>
-  <string>wispr-alt использует System Events для вставки распознанного текста в активное приложение.</string>
+  <string>Беловик использует System Events для вставки распознанного текста в активное приложение.</string>
 
   <!-- Enables arbitrary https endpoints (our backend) and allows the
        transparent overlay window behaviour to persist across Spaces. -->

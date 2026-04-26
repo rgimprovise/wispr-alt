@@ -107,7 +107,13 @@ function resetTimer() {
 const STATE_LABEL: Record<State, string> = {
   idle: "Готов",
   recording: "Запись",
-  transcribing: "Обработка",
+  transcribing: "Расшифровка",
+};
+
+const FOOT_LABEL: Record<State, string> = {
+  idle: "Удерживайте чтобы записать",
+  recording: "Отпустите — отправим",
+  transcribing: "Чистим текст…",
 };
 
 let prevState: State = "idle";
@@ -116,6 +122,8 @@ function render(state: State, text?: string) {
   pill.dataset.state = state;
   pill.className = `pill pill--${state}`;
   stateLabel.textContent = STATE_LABEL[state];
+  const footLabel = document.getElementById("foot-label");
+  if (footLabel) footLabel.textContent = FOOT_LABEL[state];
 
   // Timer transitions
   if (state === "recording" && prevState !== "recording") startTimer();

@@ -1,6 +1,5 @@
-/* Main (settings) window — uses ALRCV design tokens from tokens.css.
-   This is still a dev placeholder, not the final Settings layout, but
-   visually consistent with the design system. */
+/* Main (settings) window — Belovik design system.
+   Light-first, soft radii (16-24px), Manrope/Fraunces typography, no red accents. */
 
 body {
   background: var(--bg-base);
@@ -9,48 +8,42 @@ body {
 }
 
 .container {
-  max-width: 560px;
+  max-width: 640px;
   margin: 0 auto;
-  padding: 28px 24px 32px;
+  padding: 40px 32px 40px;
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 24px;
 }
 
-/* ── Brand ─────────────────────────────────────────────── */
+/* ── Brand lockup ───────────────────────────────────── */
 .brand {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 16px;
 }
 
 .brand__mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, var(--rec) 0%, var(--rec-hi) 100%);
-  box-shadow:
-    0 6px 16px rgba(239, 68, 68, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+  background-image: url('/src/assets/brand/logo-b-mark.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  filter: drop-shadow(0 2px 8px rgba(21, 23, 26, 0.12));
 }
 
-.brand__mark::after {
-  content: '';
-  position: absolute;
-  inset: 50% 50% auto auto;
-  transform: translate(50%, -50%);
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.95);
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.6);
+.brand__lockup {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 
-/* ── Hint ──────────────────────────────────────────────── */
+/* ── Hint with keycap ───────────────────────────────── */
 .hint {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-secondary);
   display: flex;
   align-items: center;
@@ -58,14 +51,14 @@ body {
 }
 
 .kcap {
-  height: 22px;
-  min-width: 22px;
-  padding: 0 7px;
-  border-radius: 5px;
+  height: 24px;
+  min-width: 24px;
+  padding: 0 8px;
+  border-radius: 6px;
   background: var(--surface-1);
   border: 1px solid var(--border-subtle);
-  box-shadow: 0 1px 0 var(--border-subtle), inset 0 -1px 0 rgba(0, 0, 0, 0.03);
-  font-family: var(--font-ui);
+  box-shadow: 0 1px 0 var(--border-subtle), inset 0 -1px 0 var(--border-hairline);
+  font-family: var(--font-mono);
   font-size: 11px;
   font-weight: 600;
   color: var(--text-primary);
@@ -74,18 +67,19 @@ body {
   justify-content: center;
 }
 
-/* ── Status badge ──────────────────────────────────────── */
+/* ── Status badge ───────────────────────────────────── */
 .status {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 14px;
+  gap: 10px;
+  padding: 10px 16px;
   border-radius: var(--r-pill);
+  font-family: var(--font-ui);
   font-size: 12px;
   font-weight: 600;
-  letter-spacing: 0.3px;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
-  background: var(--surface-2);
+  background: var(--surface-1);
   color: var(--text-secondary);
   border: 1px solid var(--border-subtle);
   align-self: flex-start;
@@ -93,53 +87,117 @@ body {
 }
 
 .status__dot {
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  background: var(--text-muted);
+  background: var(--text-tertiary);
   flex-shrink: 0;
   transition: all var(--d-quick) var(--ease-out);
 }
 
 .status--recording {
-  background: rgba(239, 68, 68, 0.10);
+  background: var(--surface-1);
   color: var(--rec);
-  border-color: rgba(239, 68, 68, 0.25);
+  border-color: rgba(31, 39, 51, 0.20);
 }
 
 .status--recording .status__dot {
   background: var(--rec);
-  box-shadow: 0 0 10px var(--rec);
-  animation: rec-dot 1.2s var(--ease-out) infinite;
+  box-shadow: 0 0 12px var(--rec-glow);
+  animation: b-dot 1.2s var(--ease-out) infinite;
 }
 
 .status--transcribing {
-  background: rgba(245, 158, 11, 0.12);
-  color: var(--warn);
-  border-color: rgba(245, 158, 11, 0.25);
+  background: var(--surface-mint);
+  color: var(--transcribing);
+  border-color: rgba(107, 122, 143, 0.22);
 }
 
-.status--transcribing .status__dot { background: var(--warn); }
+.status--transcribing .status__dot {
+  background: var(--transcribing);
+  box-shadow: 0 0 10px var(--transcribing-glow);
+}
 
-/* ── Row ───────────────────────────────────────────────── */
+/* ── Section ────────────────────────────────────────── */
+.settings {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px 24px;
+  background: var(--surface-1);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-2xl);
+  box-shadow: var(--shadow-sm);
+}
+
+.setting-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.setting-row__label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.setting-row__title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.setting-row__hint {
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.hotkey-picker {
+  min-width: 140px;
+  justify-content: center;
+  font-family: var(--font-mono);
+  font-weight: 600;
+}
+
+.hotkey-picker--listening {
+  background: rgba(31, 39, 51, 0.06);
+  border-color: var(--graphite);
+  color: var(--graphite);
+  animation: b-pulse 1.2s ease-in-out infinite;
+}
+
 .row {
   display: flex;
   gap: 8px;
 }
 
-/* ── Button ────────────────────────────────────────────── */
+/* ── Button ─────────────────────────────────────────── */
 .btn {
-  height: 32px;
-  padding: 0 14px;
-  border-radius: 8px;
+  height: 40px;
+  padding: 0 20px;
+  border-radius: var(--r-md);
   font-family: var(--font-ui);
   font-size: 13px;
-  font-weight: 500;
+  font-weight: 600;
   cursor: pointer;
   transition: all var(--d-quick) var(--ease-out);
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.btn--primary {
+  background: var(--graphite);
+  color: var(--text-inverse);
+  border: 1px solid var(--graphite);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn--primary:hover {
+  background: var(--graphite-soft);
 }
 
 .btn--secondary {
@@ -158,73 +216,23 @@ body {
   background: var(--surface-active);
 }
 
-/* ── Settings section ─────────────────────────────────── */
-.settings {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  padding: 16px;
-  background: var(--surface-1);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-}
-
-.setting-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  justify-content: space-between;
-}
-
-.setting-row__label {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  min-width: 0;
-}
-
-.setting-row__title {
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-primary);
-}
-
-.setting-row__hint {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-.hotkey-picker {
-  min-width: 140px;
-  justify-content: center;
-  font-family: var(--font-mono);
-  font-weight: 600;
-}
-
-.hotkey-picker--listening {
-  background: rgba(239, 68, 68, 0.08);
-  border-color: var(--rec);
-  color: var(--rec);
-  animation: rec-pulse 1.1s ease-in-out infinite;
-}
-
-/* ── Log ───────────────────────────────────────────────── */
+/* ── Log ────────────────────────────────────────────── */
 .log-wrap {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 
 #log {
   margin: 0;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: var(--surface-sunk);
   border: 1px solid var(--border-subtle);
   color: var(--text-secondary);
   border-radius: var(--r-lg);
   font-family: var(--font-mono);
   font-size: 11px;
-  line-height: 16px;
+  line-height: 1.6;
   min-height: 140px;
   max-height: 280px;
   overflow-y: auto;

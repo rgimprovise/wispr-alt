@@ -299,17 +299,18 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildBubble(): FrameLayout {
+        // Belovik bubble: graphite circle on paper-pure, soft shadow.
         val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0xFFEF4444.toInt())
-                setStroke(dp(2), 0x33FFFFFF.toInt())
+                setColor(0xFF1F2733.toInt()) // graphite
+                setStroke(dp(1), 0x29FCFAF6.toInt())
             }
-            elevation = dp(6).toFloat()
+            elevation = dp(8).toFloat()
         }
         val icon = TextView(ctx).apply {
             text = "🎤"
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(0xFFFCFAF6.toInt()) // paper-pure for high contrast on graphite
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
             gravity = Gravity.CENTER
             layoutParams = FrameLayout.LayoutParams(
@@ -361,16 +362,17 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildExpanded(): LinearLayout {
+        // Belovik expanded card: paper-pure light glass with soft 24dp radius.
         val card = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(20).toFloat()
-                setColor(0xF2121214.toInt())
-                setStroke(dp(1), 0x33FFFFFF.toInt())
+                cornerRadius = dp(24).toFloat()
+                setColor(0xF5FCFAF6.toInt()) // paper-pure 96%
+                setStroke(dp(1).coerceAtLeast(1), 0x1A15171A.toInt())
             }
-            elevation = dp(10).toFloat()
-            setPadding(dp(16), dp(14), dp(16), dp(14))
+            elevation = dp(14).toFloat()
+            setPadding(dp(18), dp(16), dp(18), dp(16))
             minimumWidth = dp(320)
         }
 
@@ -382,15 +384,18 @@ class OverlayController(private val service: WisprService) {
         val statusDot = View(ctx).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(0xFF6B7280.toInt())
+                setColor(0xFF8A8E96.toInt()) // text-tertiary
             }
             layoutParams = LinearLayout.LayoutParams(dp(8), dp(8))
-                .apply { marginEnd = dp(8) }
+                .apply { marginEnd = dp(10) }
         }
         val statusTv = TextView(ctx).apply {
-            text = "tap чтобы начать запись"
-            setTextColor(0xFFE5E7EB.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+            text = "удерживайте чтобы записать"
+            setTextColor(0xFF8A8E96.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 11f)
+            letterSpacing = 0.06f
+            isAllCaps = true
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
         }
         statusRow.addView(statusDot)
         statusRow.addView(statusTv)
@@ -400,12 +405,13 @@ class OverlayController(private val service: WisprService) {
         // Live partial transcript (multi-line, scrolling read)
         val partial = TextView(ctx).apply {
             text = ""
-            setTextColor(0xFFF5F5F4.toInt())
+            setTextColor(0xFF15171A.toInt()) // ink
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
             maxLines = 3
             ellipsize = android.text.TextUtils.TruncateAt.START
-            setPadding(0, dp(10), 0, dp(10))
+            setPadding(0, dp(12), 0, dp(12))
             minimumWidth = dp(300)
+            setLineSpacing(0f, 1.4f)
         }
         card.addView(partial)
         partialText = partial
@@ -417,30 +423,37 @@ class OverlayController(private val service: WisprService) {
             setPadding(0, dp(8), 0, 0)
         }
 
-        val cancelBtn = circleButton("✕", 0xFF374151.toInt()) { onCancelTap() }
-        val micBtn = circleButton("🎤", 0xFFEF4444.toInt(), big = true) { onMicTap() }
-        val confirmBtn = circleButton("✓", 0xFF10B981.toInt()) { onConfirmTap() }
+        // No red — graphite for primary mic, soft surfaces for secondary buttons.
+        val cancelBtn = circleButton("✕", 0xFFE8E5DD.toInt(), fg = 0xFF555A63.toInt()) { onCancelTap() }
+        val micBtn = circleButton("🎤", 0xFF1F2733.toInt(), fg = 0xFFFCFAF6.toInt(), big = true) { onMicTap() }
+        val confirmBtn = circleButton("✓", 0xFFECEFEA.toInt(), fg = 0xFF5C7A5A.toInt()) { onConfirmTap() }
 
         controls.addView(cancelBtn)
-        controls.addView(spacer(dp(20)))
+        controls.addView(spacer(dp(24)))
         controls.addView(micBtn)
-        controls.addView(spacer(dp(20)))
+        controls.addView(spacer(dp(24)))
         controls.addView(confirmBtn)
 
         card.addView(controls)
         return card
     }
 
-    private fun circleButton(label: String, color: Int, big: Boolean = false, onTap: () -> Unit): View {
+    private fun circleButton(
+        label: String,
+        bg: Int,
+        fg: Int = 0xFFFFFFFF.toInt(),
+        big: Boolean = false,
+        onTap: () -> Unit,
+    ): View {
         val size = if (big) dp(56) else dp(44)
         val tv = TextView(ctx).apply {
             text = label
-            setTextColor(0xFFFFFFFF.toInt())
+            setTextColor(fg)
             setTextSize(TypedValue.COMPLEX_UNIT_SP, if (big) 22f else 16f)
             gravity = Gravity.CENTER
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
-                setColor(color)
+                setColor(bg)
             }
             layoutParams = LinearLayout.LayoutParams(size, size)
             isClickable = true
@@ -480,9 +493,9 @@ class OverlayController(private val service: WisprService) {
     private fun setStatus(state: State) {
         scope.launch {
             statusLabel?.text = when (state) {
-                State.EXPANDED, State.HIDDEN, State.BUBBLE -> "tap микрофон чтобы начать"
-                State.RECORDING -> "● слушаю — tap ✓ когда закончите"
-                State.TRANSCRIBING -> "распознаю…"
+                State.EXPANDED, State.HIDDEN, State.BUBBLE -> "удерживайте чтобы записать"
+                State.RECORDING -> "запись · tap ✓ когда закончите"
+                State.TRANSCRIBING -> "расшифровка…"
             }
         }
     }

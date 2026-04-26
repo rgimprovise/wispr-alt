@@ -1,12 +1,19 @@
-# GitHub Actions — builds an unsigned debug APK for the wispr-alt Android
-# keyboard. Artifact can be sideloaded on any phone that has
-# "Install unknown apps" enabled for the browser/file manager.
+# GitHub Actions — builds wispr-alt Android APK signed with our persistent
+# keystore, so installs can be updated in place between releases.
 #
-# Triggers: push of v* tag, or manual dispatch. Runs independently from
-# the desktop build workflow.
+# Triggers: push of android-v* tag, or manual dispatch.
 #
-# To use the backend URL baked in at compile time, set WISPR_BACKEND_URL
-# as a repo secret. If absent it falls back to the production VPS URL.
+# Required GitHub Secrets:
+#   ANDROID_KEYSTORE_BASE64    — base64-encoded keystore file
+#                                (`base64 -i wispr-alt.keystore | pbcopy`)
+#   ANDROID_KEYSTORE_PASSWORD  — store password
+#   ANDROID_KEY_ALIAS          — key alias inside the keystore
+#   ANDROID_KEY_PASSWORD       — password for that key
+#   VITE_BACKEND_URL           — backend URL (also reused by desktop CI)
+#
+# If keystore secrets are absent, gradle falls back to the auto-generated
+# debug keystore — fine for ephemeral testing but signature differs each
+# CI run, so installs can't be updated.
 
 name: android
 
@@ -48,14 +55,41 @@ jobs:
           unzip -q /tmp/gradle.zip -d $HOME/gradle
           echo "$HOME/gradle/gradle-8.10/bin" >> $GITHUB_PATH
 
-      - name: Build debug APK
+      # Decode the base64-encoded keystore from secrets into a file. If the
+      # secret isn't set, we skip — gradle then uses its default debug
+      # keystore (signature changes per build).
+      - name: Decode keystore
+        id: keystore
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          if [ -z "$KS_B64" ]; then
+            echo "no keystore secret set; gradle will use auto-generated debug keystore"
+            echo "have_keystore=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          mkdir -p "$RUNNER_TEMP/keystore"
+          KS_PATH="$RUNNER_TEMP/keystore/wispr-alt.keystore"
+          echo "$KS_B64" | base64 -d > "$KS_PATH"
+          echo "KEYSTORE_PATH=$KS_PATH" >> "$GITHUB_ENV"
+          echo "have_keystore=true" >> "$GITHUB_OUTPUT"
+
+      - name: Build APK (signed if keystore available)
         working-directory: android
         env:
           WISPR_BACKEND_URL: ${{ secrets.VITE_BACKEND_URL || 'https://alrcvscribe.n8nrgimprovise.space' }}
-        run: gradle assembleDebug --no-daemon
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        # Build BOTH debug and release variants. Release is our main artifact
+        # (smaller, optimized, and consistently signed for in-place updates).
+        # Debug stays around for stack-traces / quick QA.
+        run: gradle assembleDebug assembleRelease --no-daemon
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
-          path: android/app/build/outputs/apk/debug/*.apk
+          path: |
+            android/app/build/outputs/apk/release/*.apk
+            android/app/build/outputs/apk/debug/*.apk

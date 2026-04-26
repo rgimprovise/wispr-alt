@@ -67,15 +67,27 @@ class WisprService : Service() {
         super.onDestroy()
     }
 
+    private fun ensureOverlay(): OverlayController {
+        return overlay ?: OverlayController(this).also { overlay = it }
+    }
+
+    /** Manual trigger from QS tile / notification action. */
     fun popOverlay() {
-        if (overlay == null) {
-            overlay = OverlayController(this).also { it.attach() }
-        }
-        overlay?.startDictation()
+        ensureOverlay().startManualDictation()
+    }
+
+    /** Called by AccessibilityService when an editable text field is focused. */
+    fun onEditableFocusDetected() {
+        ensureOverlay().showBubble()
+    }
+
+    /** Called by AccessibilityService after the bubble-hide debounce. */
+    fun onEditableFocusLost() {
+        overlay?.hideBubble()
     }
 
     fun hideOverlay() {
-        overlay?.detach()
+        overlay?.teardown()
         overlay = null
     }
 

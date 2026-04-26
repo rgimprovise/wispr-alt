@@ -9,9 +9,10 @@ import android.media.MediaRecorder
 import android.util.Log
 import android.util.TypedValue
 import android.view.Gravity
-import android.view.LayoutInflater
+import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import kotlinx.coroutines.CoroutineScope
@@ -33,26 +34,40 @@ import java.io.ByteArrayOutputStream
 import java.util.concurrent.TimeUnit
 
 /**
- * Floating overlay pill: appears over the foreground app (Telegram, Notes,
- * browser, …) while wispr-alt records and transcribes. On stop, the cleaned
- * transcript is delivered to WisprAccessibilityService, which inserts it
- * into the focused EditText of whatever app is in front.
+ * Owns the floating overlay across two visible states:
  *
- * Lifecycle owned by WisprService. attach() adds the overlay view to the
- * WindowManager; detach() removes it.
+ *  - **Bubble** — small circular control. Auto-appears when AccessibilityService
+ *    detects focus on an editable text field. Tap to enter expanded mode.
+ *  - **Expanded** — full panel with cancel/waveform/confirm controls + live
+ *    teletype transcript. Tap confirm = transcribe + insert + collapse to
+ *    bubble. Tap cancel = drop recording, collapse to bubble.
+ *
+ * State machine:
+ *   HIDDEN ──showBubble()──> BUBBLE ──tap──> EXPANDED ──tap mic──> RECORDING
+ *      ↑                       ↑                                       │
+ *      └──────hideBubble()─────┴──────────cancel/confirm───────────────┘
+ *                                                                      │
+ *                                                            tap confirm│
+ *                                                                      ↓
+ *                                                              TRANSCRIBING
  */
 class OverlayController(private val service: WisprService) {
 
-    private enum class State { IDLE, RECORDING, TRANSCRIBING }
+    private enum class State { HIDDEN, BUBBLE, EXPANDED, RECORDING, TRANSCRIBING }
 
     private val ctx: Context = service
     private val wm = ctx.getSystemService(Context.WINDOW_SERVICE) as WindowManager
 
-    private var rootView: LinearLayout? = null
-    private var statusDot: View? = null
-    private var statusText: TextView? = null
+    private var bubbleView: FrameLayout? = null
+    private var expandedView: LinearLayout? = null
+    private var statusLabel: TextView? = null
+    private var partialText: TextView? = null
 
-    private var attached = false
+    private var bubbleAttached = false
+    private var expandedAttached = false
+
+    @Volatile
+    private var state: State = State.HIDDEN
 
     // ─── Audio + transcription ────────────────────────────────────────────
     private val pcmBuffer = ByteArrayOutputStream()
@@ -62,7 +77,6 @@ class OverlayController(private val service: WisprService) {
     private var snapshotJob: Job? = null
     private var inFlight = false
     private var lastPartial = ""
-    private var state = State.IDLE
 
     private val sampleRate = 16000
     private val channelConfig = AudioFormat.CHANNEL_IN_MONO
@@ -74,136 +88,308 @@ class OverlayController(private val service: WisprService) {
         .writeTimeout(30, TimeUnit.SECONDS)
         .build()
 
-    // ─── Window attach / detach ────────────────────────────────────────────
+    // ─── Public API ────────────────────────────────────────────────────────
 
-    fun attach() {
-        if (attached) return
-        rootView = buildView()
-
-        val params = WindowManager.LayoutParams(
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.WRAP_CONTENT,
-            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
-            // FLAG_NOT_FOCUSABLE so we don't steal focus from the app the
-            // user is typing into. FLAG_LAYOUT_NO_LIMITS lets the pill
-            // sit in the status-bar area near the top.
-            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
-                or WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
-            PixelFormat.TRANSLUCENT,
-        ).apply {
-            gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            y = dp(20)
-        }
-        try {
-            wm.addView(rootView, params)
-            attached = true
-        } catch (e: Exception) {
-            Log.e(TAG, "addView failed (overlay permission?)", e)
+    /** Called by AccessibilityService when an editable text field gets focus. */
+    fun showBubble() {
+        scope.launch {
+            if (state == State.HIDDEN) {
+                attachBubble()
+                state = State.BUBBLE
+            }
         }
     }
 
-    fun detach() {
-        stopRecording(commit = false)
-        if (attached && rootView != null) {
-            try { wm.removeView(rootView) } catch (_: Exception) {}
-            attached = false
-            rootView = null
+    /**
+     * Called by AccessibilityService when focus is lost. Only hides if we're
+     * not in the middle of a recording / transcription.
+     */
+    fun hideBubble() {
+        scope.launch {
+            if (state == State.BUBBLE) {
+                detachBubble()
+                state = State.HIDDEN
+            }
+            // While EXPANDED/RECORDING/TRANSCRIBING, ignore — let the user
+            // finish their dictation cycle.
+        }
+    }
+
+    /** Called from the foreground service shutdown. */
+    fun teardown() {
+        scope.launch {
+            stopRecordingInternal(commit = false)
+            detachExpanded()
+            detachBubble()
+            state = State.HIDDEN
         }
         scope.cancel()
         service.onOverlayClosed()
     }
 
-    // ─── Build view ────────────────────────────────────────────────────────
-
-    private fun buildView(): LinearLayout {
-        val pill = LinearLayout(ctx).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(28).toFloat()
-                setColor(0xE6121214.toInt()) // semi-translucent dark
-                setStroke(dp(1), 0x33FFFFFF.toInt())
+    /** Manual entry-point for QS-tile / notification trigger. */
+    fun startManualDictation() {
+        scope.launch {
+            if (state == State.HIDDEN) {
+                attachBubble()
+                state = State.BUBBLE
             }
-            setPadding(dp(16), dp(10), dp(16), dp(10))
-            elevation = dp(8).toFloat()
+            if (state == State.BUBBLE) {
+                expand()
+                startRecording()
+            }
         }
+    }
 
-        val dot = View(ctx).apply {
+    // ─── State transitions ─────────────────────────────────────────────────
+
+    private fun expand() {
+        if (state == State.BUBBLE || state == State.HIDDEN) {
+            attachExpanded()
+            state = State.EXPANDED
+        }
+    }
+
+    private fun collapseToBubble() {
+        detachExpanded()
+        state = State.BUBBLE
+        if (!bubbleAttached) attachBubble()
+    }
+
+    // ─── Bubble view ───────────────────────────────────────────────────────
+
+    private fun attachBubble() {
+        if (bubbleAttached) return
+        val view = buildBubble()
+        val params = WindowManager.LayoutParams(
+            dp(56), dp(56),
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.END
+            x = dp(20)
+            y = dp(140) // above keyboard area
+        }
+        try {
+            wm.addView(view, params)
+            bubbleView = view
+            bubbleAttached = true
+        } catch (e: Exception) {
+            Log.e(TAG, "attachBubble failed (overlay permission?)", e)
+        }
+    }
+
+    private fun detachBubble() {
+        if (!bubbleAttached) return
+        try { bubbleView?.let { wm.removeView(it) } } catch (_: Exception) {}
+        bubbleView = null
+        bubbleAttached = false
+    }
+
+    private fun buildBubble(): FrameLayout {
+        val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.OVAL
                 setColor(0xFFEF4444.toInt())
+                setStroke(dp(2), 0x33FFFFFF.toInt())
             }
-            layoutParams = LinearLayout.LayoutParams(dp(10), dp(10))
-                .apply { marginEnd = dp(10) }
+            elevation = dp(6).toFloat()
         }
-        statusDot = dot
-        pill.addView(dot)
-
-        val label = TextView(ctx).apply {
-            text = "слушаю…"
-            setTextColor(0xFFF5F5F4.toInt())
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.END
-            layoutParams = LinearLayout.LayoutParams(
-                dp(280),
-                LinearLayout.LayoutParams.WRAP_CONTENT,
+        val icon = TextView(ctx).apply {
+            text = "🎤"
+            setTextColor(0xFFFFFFFF.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
+            gravity = Gravity.CENTER
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
             )
         }
-        statusText = label
-        pill.addView(label)
+        outer.addView(icon)
+        outer.setOnClickListener {
+            if (state == State.BUBBLE) expand()
+        }
+        return outer
+    }
 
-        // Tapping the pill stops recording + finalizes
-        pill.setOnClickListener {
-            when (state) {
-                State.RECORDING -> stopRecording(commit = true)
-                State.IDLE -> startDictation()
-                State.TRANSCRIBING -> {} // ignore
+    // ─── Expanded panel ────────────────────────────────────────────────────
+
+    private fun attachExpanded() {
+        if (expandedAttached) return
+        val view = buildExpanded()
+        val params = WindowManager.LayoutParams(
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
+            WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY,
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+            PixelFormat.TRANSLUCENT,
+        ).apply {
+            gravity = Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL
+            y = dp(120) // above keyboard area
+        }
+        try {
+            wm.addView(view, params)
+            expandedView = view
+            expandedAttached = true
+            // Also detach the bubble while expanded to keep the visual focused.
+            detachBubble()
+        } catch (e: Exception) {
+            Log.e(TAG, "attachExpanded failed", e)
+        }
+    }
+
+    private fun detachExpanded() {
+        if (!expandedAttached) return
+        try { expandedView?.let { wm.removeView(it) } } catch (_: Exception) {}
+        expandedView = null
+        expandedAttached = false
+        statusLabel = null
+        partialText = null
+    }
+
+    private fun buildExpanded(): LinearLayout {
+        val card = LinearLayout(ctx).apply {
+            orientation = LinearLayout.VERTICAL
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(20).toFloat()
+                setColor(0xF2121214.toInt())
+                setStroke(dp(1), 0x33FFFFFF.toInt())
             }
+            elevation = dp(10).toFloat()
+            setPadding(dp(16), dp(14), dp(16), dp(14))
+            minimumWidth = dp(320)
         }
 
-        return pill
+        // Status row
+        val statusRow = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        val statusDot = View(ctx).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(0xFF6B7280.toInt())
+            }
+            layoutParams = LinearLayout.LayoutParams(dp(8), dp(8))
+                .apply { marginEnd = dp(8) }
+        }
+        val statusTv = TextView(ctx).apply {
+            text = "tap чтобы начать запись"
+            setTextColor(0xFFE5E7EB.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 12f)
+        }
+        statusRow.addView(statusDot)
+        statusRow.addView(statusTv)
+        card.addView(statusRow)
+        statusLabel = statusTv
+
+        // Live partial transcript (multi-line, scrolling read)
+        val partial = TextView(ctx).apply {
+            text = ""
+            setTextColor(0xFFF5F5F4.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            maxLines = 3
+            ellipsize = android.text.TextUtils.TruncateAt.START
+            setPadding(0, dp(10), 0, dp(10))
+            minimumWidth = dp(300)
+        }
+        card.addView(partial)
+        partialText = partial
+
+        // Controls row: cancel | mic | confirm
+        val controls = LinearLayout(ctx).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(0, dp(8), 0, 0)
+        }
+
+        val cancelBtn = circleButton("✕", 0xFF374151.toInt()) { onCancelTap() }
+        val micBtn = circleButton("🎤", 0xFFEF4444.toInt(), big = true) { onMicTap() }
+        val confirmBtn = circleButton("✓", 0xFF10B981.toInt()) { onConfirmTap() }
+
+        controls.addView(cancelBtn)
+        controls.addView(spacer(dp(20)))
+        controls.addView(micBtn)
+        controls.addView(spacer(dp(20)))
+        controls.addView(confirmBtn)
+
+        card.addView(controls)
+        return card
     }
 
-    // ─── Dictation flow ────────────────────────────────────────────────────
-
-    fun startDictation() {
-        if (state == State.RECORDING) return
-        if (state == State.TRANSCRIBING) return
-        startRecording()
+    private fun circleButton(label: String, color: Int, big: Boolean = false, onTap: () -> Unit): View {
+        val size = if (big) dp(56) else dp(44)
+        val tv = TextView(ctx).apply {
+            text = label
+            setTextColor(0xFFFFFFFF.toInt())
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, if (big) 22f else 16f)
+            gravity = Gravity.CENTER
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.OVAL
+                setColor(color)
+            }
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onTap() }
+        }
+        return tv
     }
 
-    private fun setState(next: State) {
-        state = next
+    private fun spacer(width: Int): View {
+        val v = View(ctx)
+        v.layoutParams = LinearLayout.LayoutParams(width, 1)
+        return v
+    }
+
+    // ─── Control taps ──────────────────────────────────────────────────────
+
+    private fun onMicTap() {
+        when (state) {
+            State.EXPANDED -> startRecording()
+            State.RECORDING -> stopRecordingInternal(commit = true)
+            else -> {}
+        }
+    }
+
+    private fun onCancelTap() {
+        if (state == State.RECORDING) stopRecordingInternal(commit = false)
         scope.launch {
-            statusText?.text = when (next) {
-                State.IDLE -> "tap чтобы начать"
-                State.RECORDING -> "слушаю — tap чтобы закончить"
+            collapseToBubble()
+        }
+    }
+
+    private fun onConfirmTap() {
+        if (state == State.RECORDING) stopRecordingInternal(commit = true)
+    }
+
+    private fun setStatus(state: State) {
+        scope.launch {
+            statusLabel?.text = when (state) {
+                State.EXPANDED, State.HIDDEN, State.BUBBLE -> "tap микрофон чтобы начать"
+                State.RECORDING -> "● слушаю — tap ✓ когда закончите"
                 State.TRANSCRIBING -> "распознаю…"
             }
-            val color = when (next) {
-                State.IDLE -> 0xFF6B7280.toInt()
-                State.RECORDING -> 0xFFEF4444.toInt()
-                State.TRANSCRIBING -> 0xFFF59E0B.toInt()
-            }
-            (statusDot?.background as? GradientDrawable)?.setColor(color)
         }
     }
+
+    // ─── Recording ─────────────────────────────────────────────────────────
 
     private fun startRecording() {
         synchronized(pcmBuffer) { pcmBuffer.reset() }
         lastPartial = ""
         inFlight = false
+        partialText?.text = ""
 
         val minBuf = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
         val rec = try {
             AudioRecord(
                 MediaRecorder.AudioSource.MIC,
-                sampleRate,
-                channelConfig,
-                audioFormat,
+                sampleRate, channelConfig, audioFormat,
                 minBuf.coerceAtLeast(4096),
             )
         } catch (e: SecurityException) {
@@ -214,7 +400,8 @@ class OverlayController(private val service: WisprService) {
 
         audioRecord = rec
         rec.startRecording()
-        setState(State.RECORDING)
+        state = State.RECORDING
+        setStatus(state)
 
         recorderJob = scope.launch(Dispatchers.IO) {
             val buf = ByteArray(minBuf.coerceAtLeast(4096))
@@ -236,8 +423,7 @@ class OverlayController(private val service: WisprService) {
                         if (state == State.RECORDING && !partial.isNullOrBlank()) {
                             lastPartial = partial
                             withContext(Dispatchers.Main) {
-                                // Show the latest partial in the pill (truncated to fit)
-                                statusText?.text = partial
+                                partialText?.text = partial
                             }
                         }
                     }
@@ -250,7 +436,7 @@ class OverlayController(private val service: WisprService) {
         }
     }
 
-    private fun stopRecording(commit: Boolean) {
+    private fun stopRecordingInternal(commit: Boolean) {
         val rec = audioRecord ?: return
         try { rec.stop(); rec.release() } catch (_: Exception) {}
         audioRecord = null
@@ -258,20 +444,18 @@ class OverlayController(private val service: WisprService) {
         snapshotJob?.cancel()
 
         if (!commit) {
-            setState(State.IDLE)
-            scope.launch {
-                delay(150)
-                detach()
-            }
+            state = State.EXPANDED
+            setStatus(state)
             return
         }
 
-        setState(State.TRANSCRIBING)
+        state = State.TRANSCRIBING
+        setStatus(state)
 
         val pcm = synchronized(pcmBuffer) { pcmBuffer.toByteArray() }
         if (pcm.size < 4_000) {
-            setState(State.IDLE)
-            scope.launch { delay(300); detach() }
+            state = State.EXPANDED
+            setStatus(state)
             return
         }
 
@@ -283,25 +467,26 @@ class OverlayController(private val service: WisprService) {
             }
             withContext(Dispatchers.Main) {
                 if (!clean.isNullOrBlank()) {
-                    statusText?.text = clean.take(60)
+                    partialText?.text = clean
                     val ok = WisprAccessibilityService.injectText(clean)
                     if (!ok) {
-                        Log.w(TAG, "no focused field — text only on clipboard")
                         copyToClipboard(clean)
-                        statusText?.text = "скопировано в буфер — long-press → Paste"
+                        statusLabel?.text = "скопировано в буфер — long-press → Paste"
+                    } else {
+                        statusLabel?.text = "вставлено ✓"
                     }
                 } else {
-                    statusText?.text = "не распознано"
+                    statusLabel?.text = "не распознано"
                 }
                 delay(900)
-                detach()
+                collapseToBubble()
             }
         }
     }
 
     private fun copyToClipboard(text: String) {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE)
-                as android.content.ClipboardManager
+            as android.content.ClipboardManager
         cm.setPrimaryClip(android.content.ClipData.newPlainText("wispr-alt", text))
     }
 

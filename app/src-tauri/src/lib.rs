@@ -5,7 +5,11 @@ mod settings;
 
 use std::str::FromStr;
 use std::sync::Mutex;
-use tauri::{Emitter, Manager, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
+};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -140,6 +144,40 @@ fn configure_overlay(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+// ─── Tray helpers ─────────────────────────────────────────────────────────
+
+fn bring_main_to_front(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        let _ = w.show();
+        let _ = w.unminimize();
+        let _ = w.set_focus();
+    }
+}
+
+fn toggle_main_window(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        match w.is_visible() {
+            Ok(true) => { let _ = w.hide(); }
+            _ => {
+                let _ = w.show();
+                let _ = w.unminimize();
+                let _ = w.set_focus();
+            }
+        }
+    }
+}
+
+fn quit_app(app: &tauri::AppHandle) {
+    eprintln!("[lifecycle] quit requested via tray");
+    if let Some(state) = app.try_state::<AppState>() {
+        let mut rec = state.recorder.lock().unwrap();
+        if rec.is_recording() {
+            let _ = rec.stop();
+        }
+    }
+    app.exit(0);
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -232,6 +270,39 @@ pub fn run() {
 
             eprintln!("[overlay] window created: {}", overlay.label());
 
+            // System tray: keeps the app alive when the user closes the
+            // main window. Left-click toggles the main window; right-click
+            // (or Ctrl-click on macOS) opens the menu with explicit Quit.
+            let show_item = MenuItem::with_id(
+                app, "tray_show", "Открыть Беловик", true, None::<&str>,
+            )?;
+            let quit_item = MenuItem::with_id(
+                app, "tray_quit", "Выход", true, None::<&str>,
+            )?;
+            let tray_menu = Menu::with_items(app, &[&show_item, &quit_item])?;
+
+            let _tray = TrayIconBuilder::with_id("main")
+                .icon(app.default_window_icon().unwrap().clone())
+                .icon_as_template(true) // monochrome on macOS menu bar
+                .menu(&tray_menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id().as_ref() {
+                    "tray_show" => bring_main_to_front(app),
+                    "tray_quit" => quit_app(app),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        toggle_main_window(tray.app_handle());
+                    }
+                })
+                .build(app)?;
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -248,29 +319,24 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            // Clean shutdown: when the user closes the main window we want
-            // the entire process to exit, not just the window. Otherwise
-            // the hidden overlay window keeps the WebView2 host process
-            // alive on Windows and the user has to use Task Manager.
+            // Minimize-to-tray: closing the main window's X just hides it.
+            // The system tray icon stays so the user can bring it back.
+            // Explicit "Выход" in the tray menu is the only way to fully exit.
             //
-            // We also stop any active recording first so cpal releases
-            // the microphone cleanly and the snapshot-tick thread breaks
-            // out of its loop instead of being killed mid-iteration.
+            // We prevent_close() to suppress Tauri's default destroy, then
+            // hide() — the window's resources stay allocated for fast re-show.
             if let tauri::RunEvent::WindowEvent {
                 label,
-                event: tauri::WindowEvent::CloseRequested { .. },
+                event: tauri::WindowEvent::CloseRequested { api, .. },
                 ..
             } = &event
             {
                 if label == "main" {
-                    eprintln!("[lifecycle] main window close requested → exiting");
-                    let state = app_handle.state::<AppState>();
-                    let mut rec = state.recorder.lock().unwrap();
-                    if rec.is_recording() {
-                        let _ = rec.stop();
+                    api.prevent_close();
+                    if let Some(w) = app_handle.get_webview_window("main") {
+                        let _ = w.hide();
                     }
-                    drop(rec);
-                    app_handle.exit(0);
+                    eprintln!("[lifecycle] main window hidden (still in tray)");
                 }
             }
         });

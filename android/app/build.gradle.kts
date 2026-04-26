@@ -34,7 +34,12 @@ fun secret(envKey: String, propKey: String): String? =
 val keystorePath = secret("KEYSTORE_PATH", "keystorePath")
 val keystorePassword = secret("ANDROID_KEYSTORE_PASSWORD", "keystorePassword")
 val keyAlias = secret("ANDROID_KEY_ALIAS", "keyAlias")
+// Convention: keystore and key passwords are usually identical (keytool offers
+// "press Enter to use store password"). If ANDROID_KEY_PASSWORD isn't set,
+// fall back to ANDROID_KEYSTORE_PASSWORD instead of failing the build.
 val keyPassword = secret("ANDROID_KEY_PASSWORD", "keyPassword")
+    ?.takeIf { it.isNotBlank() }
+    ?: keystorePassword
 val haveCustomKeystore = listOf(keystorePath, keystorePassword, keyAlias, keyPassword)
     .all { !it.isNullOrBlank() }
 
@@ -46,8 +51,8 @@ android {
         applicationId = "com.wispralt.keyboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 6
-        versionName = "0.6.0"
+        versionCode = 7
+        versionName = "0.6.1"
 
         // Backend URL baked in at compile time.
         val backendUrl = System.getenv("WISPR_BACKEND_URL")

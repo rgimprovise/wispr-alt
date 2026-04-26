@@ -2,6 +2,15 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+  <!-- Override the Latin productName ("Belovik" — needed for WiX/MSI ASCII
+       compatibility on Windows) with the Cyrillic display name on macOS.
+       Bundle binary on disk stays as "Belovik.app" but Finder/Dock/menubar
+       all show «Беловик». -->
+  <key>CFBundleDisplayName</key>
+  <string>Беловик</string>
+  <key>CFBundleName</key>
+  <string>Беловик</string>
+
   <key>NSMicrophoneUsageDescription</key>
   <string>Беловик нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
 

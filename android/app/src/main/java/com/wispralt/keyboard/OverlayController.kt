@@ -160,6 +160,7 @@ class OverlayController(private val service: WisprService) {
 
     private fun attachBubble() {
         if (bubbleAttached) return
+        val saved = loadBubblePosition()
         val view = buildBubble()
         val params = WindowManager.LayoutParams(
             dp(56), dp(56),
@@ -168,10 +169,13 @@ class OverlayController(private val service: WisprService) {
                 or WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
             PixelFormat.TRANSLUCENT,
         ).apply {
-            gravity = Gravity.BOTTOM or Gravity.END
-            x = dp(20)
-            y = dp(140) // above keyboard area
+            gravity = Gravity.TOP or Gravity.START
+            x = saved.x
+            y = saved.y
         }
+        bubbleParams = params
+        attachDragHandler(view, params)
+        attachLongPressHandler(view)
         try {
             wm.addView(view, params)
             bubbleView = view
@@ -180,6 +184,112 @@ class OverlayController(private val service: WisprService) {
             Log.e(TAG, "attachBubble failed (overlay permission?)", e)
         }
     }
+
+    private var bubbleParams: WindowManager.LayoutParams? = null
+    private val prefs by lazy {
+        ctx.getSharedPreferences("wispr-alt-overlay", Context.MODE_PRIVATE)
+    }
+
+    private data class BubblePos(val x: Int, val y: Int)
+
+    private fun loadBubblePosition(): BubblePos {
+        val metrics = ctx.resources.displayMetrics
+        val defaultX = metrics.widthPixels - dp(76)
+        val defaultY = metrics.heightPixels - dp(196)
+        return BubblePos(
+            x = prefs.getInt("bubble_x", defaultX),
+            y = prefs.getInt("bubble_y", defaultY),
+        )
+    }
+
+    private fun saveBubblePosition(x: Int, y: Int) {
+        prefs.edit().putInt("bubble_x", x).putInt("bubble_y", y).apply()
+    }
+
+    /**
+     * Combined touch handler:
+     *
+     *  - **Drag**: if movement exceeds slop, reposition the bubble; persist
+     *    the new x/y to SharedPreferences on release.
+     *  - **Long-press push-to-talk**: hold for ≥400ms without dragging →
+     *    expand + start recording immediately. Release = stop and commit.
+     *  - **Tap**: short press without drag/PTT → fall through to OnClick
+     *    listener which does normal expand.
+     */
+    private fun attachDragHandler(view: View, params: WindowManager.LayoutParams) {
+        val slop = android.view.ViewConfiguration.get(ctx).scaledTouchSlop
+        val longPressMs = 400L
+        var startTouchX = 0f
+        var startTouchY = 0f
+        var startWinX = 0
+        var startWinY = 0
+        var dragging = false
+        var pushToTalkActive = false
+        val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+        var pttRunnable: Runnable? = null
+
+        view.setOnTouchListener { v, event ->
+            when (event.action) {
+                MotionEvent.ACTION_DOWN -> {
+                    startTouchX = event.rawX
+                    startTouchY = event.rawY
+                    startWinX = params.x
+                    startWinY = params.y
+                    dragging = false
+                    pushToTalkActive = false
+                    // Schedule long-press → PTT
+                    pttRunnable = Runnable {
+                        if (!dragging && state == State.BUBBLE) {
+                            pushToTalkActive = true
+                            expand()
+                            startRecording()
+                        }
+                    }
+                    mainHandler.postDelayed(pttRunnable!!, longPressMs)
+                    true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val dx = event.rawX - startTouchX
+                    val dy = event.rawY - startTouchY
+                    if (!dragging && (kotlin.math.abs(dx) > slop || kotlin.math.abs(dy) > slop)) {
+                        dragging = true
+                        pttRunnable?.let { mainHandler.removeCallbacks(it) }
+                    }
+                    if (dragging) {
+                        params.x = (startWinX + dx).toInt()
+                            .coerceIn(0, ctx.resources.displayMetrics.widthPixels - dp(56))
+                        params.y = (startWinY + dy).toInt()
+                            .coerceIn(0, ctx.resources.displayMetrics.heightPixels - dp(56))
+                        try { wm.updateViewLayout(v, params) } catch (_: Exception) {}
+                    }
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    pttRunnable?.let { mainHandler.removeCallbacks(it) }
+                    when {
+                        pushToTalkActive -> {
+                            // Release while holding → commit
+                            pushToTalkActive = false
+                            stopRecordingInternal(commit = true)
+                        }
+                        dragging -> {
+                            saveBubblePosition(params.x, params.y)
+                        }
+                        else -> {
+                            // Plain tap — fall through to OnClick
+                            v.performClick()
+                        }
+                    }
+                    dragging = false
+                    true
+                }
+                else -> false
+            }
+        }
+    }
+
+    /** No longer needed — long-press handled inside drag handler. */
+    private fun attachLongPressHandler(view: View) { /* no-op */ }
 
     private fun detachBubble() {
         if (!bubbleAttached) return

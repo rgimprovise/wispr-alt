@@ -31,16 +31,20 @@ val localProps = Properties().apply {
 fun secret(envKey: String, propKey: String): String? =
     System.getenv(envKey) ?: localProps.getProperty(propKey)
 
-val keystorePath = secret("KEYSTORE_PATH", "keystorePath")
-val keystorePassword = secret("ANDROID_KEYSTORE_PASSWORD", "keystorePassword")
-val keyAlias = secret("ANDROID_KEY_ALIAS", "keyAlias")
+// Names below are intentionally NOT `keyAlias` / `keyPassword` — those names
+// shadow SigningConfig.keyAlias / keyPassword inside the create("wispr") DSL
+// closure, causing self-assignment to null. Use prefixed names that don't
+// collide with the receiver's property names.
+val ksPath = secret("KEYSTORE_PATH", "keystorePath")
+val ksPassword = secret("ANDROID_KEYSTORE_PASSWORD", "keystorePassword")
+val ksAlias = secret("ANDROID_KEY_ALIAS", "keyAlias")
 // Convention: keystore and key passwords are usually identical (keytool offers
 // "press Enter to use store password"). If ANDROID_KEY_PASSWORD isn't set,
 // fall back to ANDROID_KEYSTORE_PASSWORD instead of failing the build.
-val keyPassword = secret("ANDROID_KEY_PASSWORD", "keyPassword")
+val ksKeyPassword = secret("ANDROID_KEY_PASSWORD", "keyPassword")
     ?.takeIf { it.isNotBlank() }
-    ?: keystorePassword
-val haveCustomKeystore = listOf(keystorePath, keystorePassword, keyAlias, keyPassword)
+    ?: ksPassword
+val haveCustomKeystore = listOf(ksPath, ksPassword, ksAlias, ksKeyPassword)
     .all { !it.isNullOrBlank() }
 
 android {
@@ -51,8 +55,8 @@ android {
         applicationId = "com.wispralt.keyboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.6.1"
+        versionCode = 8
+        versionName = "0.6.2"
 
         // Backend URL baked in at compile time.
         val backendUrl = System.getenv("WISPR_BACKEND_URL")
@@ -63,10 +67,10 @@ android {
     signingConfigs {
         if (haveCustomKeystore) {
             create("wispr") {
-                storeFile = file(keystorePath!!)
-                storePassword = keystorePassword
-                this.keyAlias = keyAlias
-                this.keyPassword = keyPassword
+                storeFile = file(ksPath!!)
+                storePassword = ksPassword
+                keyAlias = ksAlias
+                keyPassword = ksKeyPassword
             }
         }
     }

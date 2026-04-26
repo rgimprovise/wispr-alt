@@ -58,9 +58,9 @@
 - Notification small icon Android (24×24 monochrome white-on-transparent)
 - Quick Settings tile icon Android (24×24)
 
-### 5.2. Overlay pill — приоритет 1
+### 5.2. Overlay pill (macOS + Windows) — приоритет 1
 
-**Сердце продукта.** Сейчас тёмный с красной точкой. Нужна light Беловик-версия:
+**Сердце продукта на десктопе.** Сейчас тёмный с красной точкой. Нужна light Беловик-версия:
 - Состояния: `idle` (скрыт по умолчанию), `recording` (активный), `transcribing` (обработка), `error`
 - Вылетает сверху по центру экрана, не крадёт фокус
 - Размер компактный, ~460×72 при простом состоянии, может расширяться при показе live-транскрипта
@@ -72,10 +72,16 @@
 - Recording: акцентный графит/чернильный (НЕ красный — брендбук этого избегает)
 - Transcribing: мягкий навигационный/мятный
 
-### 5.3. Главное окно (desktop) — приоритет 2
+**Платформенные нюансы:**
+- **macOS:** допустима стеклянная подложка (vibrancy), скруглённые углы 24–28px, тонкая полупрозрачная граница. Match с Sequoia / Liquid Glass-эстетикой
+- **Windows 11:** Mica/Acrylic подложка через WebView2 (с fallback на solid если не поддерживается), скруглённые углы 16–20px (чуть жёстче чем mac), Fluent-стиль теней
+
+Дизайнер: одна основа дизайна с минимальными вариациями для каждой ОС. Не два разных дизайна — единый язык.
+
+### 5.3. Главное окно — macOS + Windows — приоритет 2
 
 Сейчас минимальное dev-окно. Нужно полноценное Settings/Control window:
-- Sidebar (как mac System Settings) с секциями: **Главное / Стили / Аккаунт / История / Об отношении**
+- Sidebar layout с секциями: **Главное / Стили / Аккаунт / История / Об отношении**
 - **Главное:** выбор микрофона, hotkey picker, режим записи (toggle/PTT), дефолтный язык
 - **Стили обработки:** список из 6+ режимов (Деловой / Краткий / Telegram / Письмо / Задача / ТЗ / Свободный) + редактор пользовательских стилей
 - **Аккаунт:** email, тариф, остаток квоты, billing-портал ссылка, BYOK-поле
@@ -84,28 +90,43 @@
 
 Размер ~720×560, не resizable. Light тема первична, dark parity готова.
 
-### 5.4. Onboarding flow — приоритет 2
+**Платформенные нюансы:**
+- **macOS:** sidebar в стиле System Settings (translucent, иконки в кружках), title bar совмещён с контентом (Tauri использует `titleBarStyle: hidden`), traffic lights в углу
+- **Windows:** Fluent-style sidebar (плотнее, без translucent), стандартные window controls (minimize/maximize/close) с акцентным цветом
 
-4–5 экранов первого запуска:
-1. **Приветствие** — лого, tagline, hero-визуал (3D Б или стеклянная волна из брендбука)
-2. **Микрофон** — запрос permission, объяснение зачем
-3. **Доступы системы** — macOS Accessibility / Automation, Windows Defender, Android overlay+a11y. Скриншоты-инструкции
+Желательны **готовые макеты обоих ОС** — а не «один десктопный» — чтобы покрыть платформенную специфику.
+
+### 5.4. Onboarding flow — все платформы — приоритет 2
+
+4–5 экранов первого запуска. Один визуальный язык, но **разные шаги на разных ОС** (разные системные диалоги permissions):
+1. **Приветствие** — лого, tagline, hero-визуал (3D Б или стеклянная волна из брендбука). Одинаковый на всех платформах
+2. **Микрофон** — запрос runtime-permission. Универсальный экран
+3. **Доступы системы** — этот экран ветвится:
+    - **macOS:** «Разрешить Accessibility и Automation» со скриншотами System Settings
+    - **Windows:** «Внесите wispr-alt в исключения Windows Defender» со скриншотами (если SmartScreen блочит)
+    - **Android:** «Display over other apps» + «Accessibility service» + «Notifications»
+    - **iOS:** «Разрешите клавиатуру» + «Allow Full Access»
 4. **Первая диктовка** — guided tour, мини-демо
-5. **Готово** — переход на основной экран + краткие подсказки по hotkey
+5. **Готово** — переход на основной экран + краткие подсказки по hotkey/жесту
 
 Tone of voice: «Говорите свободно. Получайте чистый текст». Минимум технических терминов, дружелюбно.
 
-### 5.5. Tray / menu bar (desktop) — приоритет 3
+Нужны макеты **всех 5 экранов × 2 темы (light/dark)** + **варианты Шага 3 для каждой платформы**.
 
-- macOS menubar icon (Б в template-стиле, монохром, адаптируется к light/dark)
-- Windows system tray icon (тот же принцип)
+### 5.5. Tray / menu bar (macOS + Windows) — приоритет 3
 
-Popup-меню при клике/правом клике:
+Иконка в строке меню (mac) / system tray (Windows):
+- **macOS:** Б в template-стиле, монохром, адаптируется к dark/light режиму системной строки меню. Active-состояние (запись идёт) — тонкая графитовая обводка или альтернативный glyph
+- **Windows:** та же идея для system tray. Поддержка сменяющихся состояний (idle/recording/transcribing) через цвет иконки или индикатор-точку
+
+Popup-меню при клике/правом клике (одинаковое на обеих платформах, стилизация — нативная):
 - Текущий статус (записывается / готов)
 - Quick action: Начать запись (показывает текущий hotkey)
 - Последние 5 транскрипций (копировать в один тап)
 - Открыть Историю / Настройки
 - Выход
+
+Нужны макеты popup-меню для **обеих платформ** (стилизация чуть разная — macOS round corners, Windows squarer).
 
 ### 5.6. Android — приоритет 1 (одновременно с overlay)
 
@@ -194,11 +215,16 @@ Popup-меню при клике/правом клике:
 2. **Логотип** — SVG в нескольких вариантах (полный, иконка, монохром, на тёмном фоне)
 3. **Иконки приложения** — все нужные размеры/форматы по списку 5.1
 4. **High-fi макеты** в Figma / Pencil:
-   - Overlay pill (4 состояния × light/dark)
-   - Главное окно (4 секции × light/dark)
-   - Onboarding (5 экранов)
-   - Tray menu (раскрытое)
-   - Android MainActivity, overlay, floating bubble
+   - **Overlay pill — macOS:** 4 состояния × 2 темы (light/dark)
+   - **Overlay pill — Windows:** 4 состояния × 2 темы
+   - **Главное окно — macOS:** 5 секций (Главное/Стили/Аккаунт/История/Об отношении) × 2 темы
+   - **Главное окно — Windows:** 5 секций × 2 темы
+   - **Onboarding (общий):** экраны 1, 2, 4, 5 — × 2 темы
+   - **Onboarding (специфика permissions):** экран 3 в вариантах для macOS, Windows, Android, iOS
+   - **Tray / menu bar popup — macOS:** раскрытое меню
+   - **Tray popup — Windows:** раскрытое меню
+   - **Android:** MainActivity (onboarding + control panel), overlay pill (4 состояния), floating bubble (свёрнутый/развёрнутый), notification stripe в шторке
+   - **iOS (когда дойдём):** main app screen, keyboard extension
 5. **Компонентная библиотека** — Button (primary/secondary/ghost), Input, Toggle, Tabs, Modal, ListItem, Badge, Pill, Empty state. Состояния: default/hover/active/focus/disabled
 6. **Шрифты** — конкретные семейства + веса + лицензия (если коммерческие — где взять)
 7. **Motion guidelines** — какие easing/duration для каких переходов. Спецификация по 1-2 ключевым анимациям (overlay enter/exit, pill scroll)

@@ -1,11 +1,11 @@
-# XcodeGen spec — generates wispr-alt.xcodeproj from this declarative
+# XcodeGen spec — generates Belovik.xcodeproj from this declarative
 # config. Avoids checking in the cumbersome Xcode project files.
 #
 # Usage:
 #   brew install xcodegen
 #   cd ios && xcodegen
-#   open wispr-alt.xcodeproj
-name: wispr-alt
+#   open Belovik.xcodeproj
+name: Belovik
 options:
   bundleIdPrefix: com.wispralt
   deploymentTarget:
@@ -16,19 +16,16 @@ settings:
   base:
     SWIFT_VERSION: "5.9"
     CODE_SIGN_STYLE: Automatic
-    # Set DEVELOPMENT_TEAM in Xcode (Signing & Capabilities) — XcodeGen
-    # leaves it blank so each developer signs locally.
+    # Each developer fills in their own DEVELOPMENT_TEAM through
+    # Xcode → Signing & Capabilities → Team. Free Apple ID works.
     DEVELOPMENT_TEAM: ""
 
-# Shared App Group for keyboard ↔ main-app communication
-# (must be added under Signing & Capabilities → App Groups in Xcode
-# for BOTH targets, picking the same group ID).
 configFiles:
   Debug: Configs/Debug.xcconfig
   Release: Configs/Release.xcconfig
 
 targets:
-  wispr-alt:
+  Belovik:
     type: application
     platform: iOS
     sources:
@@ -36,9 +33,10 @@ targets:
     info:
       path: wispr-alt/Info.plist
       properties:
-        CFBundleDisplayName: wispr-alt
+        CFBundleDisplayName: Беловик
+        CFBundleName: Беловик
         UILaunchScreen: {}
-        NSMicrophoneUsageDescription: "wispr-alt нужен микрофон для записи и транскрипции вашей речи."
+        NSMicrophoneUsageDescription: "Беловик нужен микрофон для записи и транскрипции вашей речи."
         CFBundleURLTypes:
           - CFBundleURLName: com.wispralt.app
             CFBundleURLSchemes:
@@ -52,9 +50,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
     dependencies:
-      - target: wispr-alt-keyboard
+      - target: BelovikKeyboard
 
-  wispr-alt-keyboard:
+  BelovikKeyboard:
     type: app-extension
     platform: iOS
     sources:
@@ -62,7 +60,7 @@ targets:
     info:
       path: wispr-alt-keyboard/Info.plist
       properties:
-        CFBundleDisplayName: wispr-alt
+        CFBundleDisplayName: Беловик
         NSExtension:
           NSExtensionAttributes:
             IsASCIICapable: false

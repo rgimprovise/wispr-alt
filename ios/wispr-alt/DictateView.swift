@@ -3,107 +3,141 @@ import AVFoundation
 
 /// Recording screen launched via wispralt://dictate from the keyboard.
 struct DictateView: View {
-    enum State { case idle, recording, transcribing, done(String), error(String) }
+    enum State {
+        case idle
+        case recording
+        case transcribing
+        case done(String)
+        case error(String)
+    }
 
     @StateObject private var recorder = AudioRecorder()
     @State private var state: State = .idle
 
     var body: some View {
-        VStack(spacing: 24) {
-            Spacer()
+        ZStack {
+            BelovikColor.paper.ignoresSafeArea()
 
-            statusIcon
-                .font(.system(size: 80))
+            VStack(spacing: 24) {
+                Spacer()
 
-            Text(statusText)
-                .font(.title3.weight(.semibold))
-                .multilineTextAlignment(.center)
-                .padding(.horizontal)
+                statusBadge
+                    .padding(.bottom, 8)
 
-            if case .done(let text) = state {
-                ScrollView {
-                    Text(text)
-                        .font(.body)
-                        .padding()
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .background(Color(.secondarySystemBackground))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                Text(statusText)
+                    .font(.belovikDisplay(26))
+                    .foregroundStyle(BelovikColor.textPrimary)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 32)
+
+                if case .done(let text) = state {
+                    transcriptCard(text: text)
+                        .padding(.horizontal, 24)
                 }
-                .frame(maxHeight: 220)
-                .padding(.horizontal)
+
+                Spacer()
+
+                primaryButton
+                    .padding(.horizontal, 24)
+                    .padding(.bottom, 32)
             }
-
-            Spacer()
-
-            primaryButton
         }
-        .padding(.bottom, 40)
         .onAppear { startRecording() }
     }
 
-    private var statusIcon: some View {
+    private var statusBadge: some View {
+        ZStack {
+            Circle()
+                .fill(badgeColor.opacity(0.10))
+                .frame(width: 96, height: 96)
+            Circle()
+                .stroke(badgeColor.opacity(0.20), lineWidth: 1)
+                .frame(width: 96, height: 96)
+            Image(systemName: badgeIcon)
+                .font(.system(size: 40, weight: .medium))
+                .foregroundStyle(badgeColor)
+        }
+    }
+
+    private var badgeIcon: String {
         switch state {
-        case .idle, .recording:
-            return Image(systemName: "mic.fill").foregroundStyle(.red)
-        case .transcribing:
-            return Image(systemName: "waveform").foregroundStyle(.orange)
-        case .done:
-            return Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
-        case .error:
-            return Image(systemName: "xmark.octagon.fill").foregroundStyle(.red)
+        case .idle, .recording: return "waveform"
+        case .transcribing:     return "sparkles"
+        case .done:             return "checkmark"
+        case .error:            return "exclamationmark.triangle"
+        }
+    }
+
+    private var badgeColor: Color {
+        switch state {
+        case .idle, .recording: return BelovikColor.rec
+        case .transcribing:     return BelovikColor.transcribing
+        case .done:             return BelovikColor.success
+        case .error:            return BelovikColor.error
         }
     }
 
     private var statusText: String {
         switch state {
-        case .idle: return "Готов к записи"
-        case .recording: return "Говорите…\nЗатем нажмите «Готово»"
-        case .transcribing: return "Распознаю…"
-        case .done: return "Готово — переключитесь обратно в приложение"
-        case .error(let msg): return "Ошибка: \(msg)"
+        case .idle:           return "Готов"
+        case .recording:      return "Слушаю…"
+        case .transcribing:   return "Расшифровываю"
+        case .done:           return "Готово"
+        case .error(let m):   return "Ошибка: \(m)"
         }
+    }
+
+    private func transcriptCard(text: String) -> some View {
+        ScrollView {
+            Text(text)
+                .font(.belovikUI(15))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .padding(20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .frame(maxHeight: 220)
+        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.xxl))
+        .overlay(
+            RoundedRectangle(cornerRadius: BelovikRadius.xxl)
+                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+        )
     }
 
     @ViewBuilder
     private var primaryButton: some View {
         switch state {
         case .recording:
-            Button {
-                stopAndTranscribe()
-            } label: {
-                Label("Готово", systemImage: "stop.circle.fill")
-                    .font(.title3.weight(.semibold))
+            Button(action: stopAndTranscribe) {
+                Label("Готово", systemImage: "stop.fill")
+                    .font(.belovikUI(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.red)
-                    .foregroundStyle(.white)
-                    .clipShape(Capsule())
+                    .padding(.vertical, 16)
+                    .background(BelovikColor.graphite, in: Capsule())
+                    .foregroundStyle(BelovikColor.textInverse)
             }
-            .padding(.horizontal)
-        case .done(let text):
-            VStack(spacing: 8) {
-                Button {
-                    SharedStorage.savePendingTranscript(text)
-                    UIPasteboard.general.string = text
-                    // Show simple confirmation; iOS doesn't allow programmatic
-                    // app-switching so user must swipe back to source app.
-                    state = .done("\(text)\n\n(текст сохранён, вернитесь в приложение)")
-                } label: {
+        case .done:
+            VStack(spacing: 10) {
+                Button(action: handoffToKeyboard) {
                     Label("Передать в клавиатуру", systemImage: "keyboard")
-                        .font(.headline)
+                        .font(.belovikUI(16, weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(.vertical, 16)
+                        .background(BelovikColor.graphite, in: Capsule())
+                        .foregroundStyle(BelovikColor.textInverse)
                 }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal)
-
-                Button("Записать ещё раз") { startRecording() }
-                    .font(.subheadline)
+                Button("Записать ещё раз", action: startRecording)
+                    .font(.belovikUI(14))
+                    .foregroundStyle(BelovikColor.textSecondary)
             }
         case .error:
-            Button("Попробовать снова") { startRecording() }
-                .buttonStyle(.borderedProminent)
-                .padding(.horizontal)
+            Button(action: startRecording) {
+                Text("Попробовать снова")
+                    .font(.belovikUI(16, weight: .semibold))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(BelovikColor.graphite, in: Capsule())
+                    .foregroundStyle(BelovikColor.textInverse)
+            }
         default:
             EmptyView()
         }
@@ -134,6 +168,14 @@ struct DictateView: View {
             } catch {
                 await MainActor.run { state = .error("\(error)") }
             }
+        }
+    }
+
+    private func handoffToKeyboard() {
+        if case .done(let text) = state {
+            SharedStorage.savePendingTranscript(text)
+            UIPasteboard.general.string = text
+            state = .done("\(text)\n\n(текст передан в клавиатуру — вернитесь в приложение)")
         }
     }
 }

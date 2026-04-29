@@ -5,68 +5,131 @@ struct OnboardingView: View {
     @State private var micGranted = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 16) {
-            Text("wispr-alt")
-                .font(.largeTitle.weight(.bold))
-            Text("Клавиатура с голосовым вводом")
-                .foregroundStyle(.secondary)
+        ZStack {
+            BelovikColor.paper.ignoresSafeArea()
 
-            Divider().padding(.vertical, 8)
+            ScrollView {
+                VStack(alignment: .leading, spacing: 20) {
+                    Text("Беловик")
+                        .font(.belovikDisplay(40))
+                        .foregroundStyle(BelovikColor.textPrimary)
+                        .padding(.top, 24)
 
-            stepRow(
-                index: 1,
-                title: "Разрешить микрофон",
-                done: micGranted,
-                action: requestMic
-            )
+                    Text("Голосовой интерфейс для работы с текстом")
+                        .font(.belovikUI(15))
+                        .foregroundStyle(BelovikColor.textSecondary)
 
-            stepRow(
-                index: 2,
-                title: "Включить wispr-alt в настройках",
-                hint: "Settings → General → Keyboard → Keyboards → Add New Keyboard… → wispr-alt",
-                done: false,
-                action: openKeyboardSettings
-            )
+                    Spacer().frame(height: 8)
 
-            stepRow(
-                index: 3,
-                title: "Включить Allow Full Access",
-                hint: "В том же экране настроек у клавиатуры wispr-alt включите тоггл Allow Full Access — нужен для сетевых запросов и микрофона",
-                done: false,
-                action: openKeyboardSettings
-            )
+                    stepCard(
+                        index: 1,
+                        title: "Разрешить микрофон",
+                        body: "Нужен чтобы записывать вашу речь. Аудио шифруется и не сохраняется.",
+                        done: micGranted,
+                        cta: "Разрешить",
+                        action: requestMic
+                    )
 
-            Spacer()
+                    stepCard(
+                        index: 2,
+                        title: "Включить клавиатуру в настройках",
+                        body: "Settings → General → Keyboard → Keyboards → Add New Keyboard… → Беловик",
+                        done: false,
+                        cta: "Открыть настройки",
+                        action: openSettings
+                    )
 
-            Text("Использование:\n• В любом приложении тапни в текстовое поле\n• Свайпни вверх по globe-кнопке клавиатуры (или удерживай 🌐) → выбери wispr-alt\n• Тапни 🎤 → говори → продиктованный текст автоматически вставится в поле")
-                .font(.footnote)
-                .foregroundStyle(.secondary)
+                    stepCard(
+                        index: 3,
+                        title: "Включить Allow Full Access",
+                        body: "В том же экране тапните по клавиатуре «Беловик» и включите Allow Full Access — это нужно для сетевых запросов и микрофона.",
+                        done: false,
+                        cta: "Открыть настройки",
+                        action: openSettings
+                    )
+
+                    Spacer().frame(height: 16)
+
+                    instructionsCard
+
+                    Spacer().frame(height: 40)
+                }
+                .padding(.horizontal, 24)
+            }
         }
-        .padding(24)
         .onAppear { refreshMicStatus() }
     }
 
-    private func stepRow(
+    private func stepCard(
         index: Int,
         title: String,
-        hint: String? = nil,
+        body: String,
         done: Bool,
+        cta: String,
         action: @escaping () -> Void
     ) -> some View {
-        HStack(alignment: .top) {
-            Image(systemName: done ? "checkmark.circle.fill" : "\(index).circle")
-                .foregroundStyle(done ? .green : .accentColor)
-                .imageScale(.large)
-                .padding(.top, 2)
-            VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.body.weight(.medium))
-                if let hint {
-                    Text(hint).font(.caption).foregroundStyle(.secondary)
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .top, spacing: 12) {
+                ZStack {
+                    Circle()
+                        .fill(done ? BelovikColor.success : BelovikColor.graphite)
+                        .frame(width: 28, height: 28)
+                    if done {
+                        Image(systemName: "checkmark")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundStyle(.white)
+                    } else {
+                        Text("\(index)")
+                            .font(.belovikUI(13, weight: .bold))
+                            .foregroundStyle(.white)
+                    }
                 }
-                Button("Открыть", action: action)
-                    .font(.caption.weight(.semibold))
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(title)
+                        .font(.belovikUI(16, weight: .semibold))
+                        .foregroundStyle(BelovikColor.textPrimary)
+                    Text(body)
+                        .font(.belovikUI(13))
+                        .foregroundStyle(BelovikColor.textSecondary)
+                        .lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            if !done {
+                Button(action: action) {
+                    Text(cta)
+                        .font(.belovikUI(14, weight: .semibold))
+                        .foregroundStyle(BelovikColor.textInverse)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: BelovikRadius.md))
+                }
             }
         }
+        .padding(20)
+        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.xxl))
+        .overlay(
+            RoundedRectangle(cornerRadius: BelovikRadius.xxl)
+                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+        )
+    }
+
+    private var instructionsCard: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Как использовать")
+                .font(.belovikUI(14, weight: .bold))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            Text(
+                "В любом приложении тапните в текстовое поле. Удерживайте 🌐 на клавиатуре → выберите Беловик. Тап 🎤 → говорите → текст вставится автоматически."
+            )
+            .font(.belovikUI(13))
+            .foregroundStyle(BelovikColor.textSecondary)
+            .lineSpacing(3)
+        }
+        .padding(20)
+        .background(BelovikColor.surfaceMint, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
     }
 
     private func refreshMicStatus() {
@@ -82,7 +145,7 @@ struct OnboardingView: View {
         }
     }
 
-    private func openKeyboardSettings() {
+    private func openSettings() {
         if let url = URL(string: UIApplication.openSettingsURLString) {
             UIApplication.shared.open(url)
         }

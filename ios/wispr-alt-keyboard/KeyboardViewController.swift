@@ -21,14 +21,27 @@ final class KeyboardViewController: UIInputViewController {
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
 
+    // Belovik palette mirrored from BelovikTokens.swift / tokens.css.
+    private struct Pal {
+        // Light keyboard surface (matches paper-soft background).
+        static let bg            = UIColor(red: 0xF4/255, green: 0xF1/255, blue: 0xEC/255, alpha: 1)
+        static let keyBg         = UIColor(red: 0xFC/255, green: 0xFA/255, blue: 0xF6/255, alpha: 1)
+        static let keyBgPressed  = UIColor(red: 0xE8/255, green: 0xE5/255, blue: 0xDD/255, alpha: 1)
+        static let keyFg         = UIColor(red: 0x15/255, green: 0x17/255, blue: 0x1A/255, alpha: 1)
+        static let modBg         = UIColor(red: 0xEC/255, green: 0xEF/255, blue: 0xEA/255, alpha: 1)
+        static let modFg         = UIColor(red: 0x55/255, green: 0x5A/255, blue: 0x63/255, alpha: 1)
+        static let micBg         = UIColor(red: 0x1F/255, green: 0x27/255, blue: 0x33/255, alpha: 1)
+        static let statusFg      = UIColor(red: 0x8A/255, green: 0x8E/255, blue: 0x96/255, alpha: 1)
+    }
+
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.backgroundColor = UIColor(red: 14/255, green: 14/255, blue: 16/255, alpha: 1)
+        view.backgroundColor = Pal.bg
 
         statusLabel = UILabel()
-        statusLabel.text = "wispr-alt"
-        statusLabel.textColor = UIColor(white: 0.6, alpha: 1)
-        statusLabel.font = .systemFont(ofSize: 11, weight: .medium)
+        statusLabel.text = "Беловик"
+        statusLabel.textColor = Pal.statusFg
+        statusLabel.font = .systemFont(ofSize: 11, weight: .semibold)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
 
         keyboardStack = UIStackView()
@@ -73,7 +86,7 @@ final class KeyboardViewController: UIInputViewController {
             let rowStack = makeRow()
 
             if i == 2 {
-                rowStack.addArrangedSubview(makeKey("⇧", weight: 1.5) { [weak self] _ in
+                rowStack.addArrangedSubview(makeKey("⇧", weight: 1.5, modifier: true) { [weak self] _ in
                     self?.shiftOn.toggle(); self?.rebuildKeyboard()
                 })
             }
@@ -90,7 +103,7 @@ final class KeyboardViewController: UIInputViewController {
             }
 
             if i == 2 {
-                rowStack.addArrangedSubview(makeKey("⌫", weight: 1.5) { [weak self] _ in
+                rowStack.addArrangedSubview(makeKey("⌫", weight: 1.5, modifier: true) { [weak self] _ in
                     self?.textDocumentProxy.deleteBackward()
                 })
             }
@@ -100,11 +113,11 @@ final class KeyboardViewController: UIInputViewController {
 
         // Bottom row: lang switch | 🌐 | 🎤 | space | , . | enter
         let bottom = makeRow()
-        bottom.addArrangedSubview(makeKey(currentLang == .en ? "RU" : "EN", weight: 1.2) { [weak self] _ in
+        bottom.addArrangedSubview(makeKey(currentLang == .en ? "RU" : "EN", weight: 1.2, modifier: true) { [weak self] _ in
             self?.currentLang = self?.currentLang == .en ? .ru : .en
             self?.rebuildKeyboard()
         })
-        bottom.addArrangedSubview(makeKey("🌐", weight: 1.2) { [weak self] _ in
+        bottom.addArrangedSubview(makeKey("🌐", weight: 1.2, modifier: true) { [weak self] _ in
             self?.advanceToNextInputMode()
         })
         bottom.addArrangedSubview(makeMicKey())
@@ -117,7 +130,7 @@ final class KeyboardViewController: UIInputViewController {
         bottom.addArrangedSubview(makeKey(".", weight: 0.9) { [weak self] _ in
             self?.textDocumentProxy.insertText(".")
         })
-        bottom.addArrangedSubview(makeKey("⏎", weight: 1.2) { [weak self] _ in
+        bottom.addArrangedSubview(makeKey("⏎", weight: 1.2, modifier: true) { [weak self] _ in
             self?.textDocumentProxy.insertText("\n")
         })
 
@@ -135,40 +148,44 @@ final class KeyboardViewController: UIInputViewController {
     private func makeKey(
         _ title: String,
         weight: CGFloat = 1,
+        modifier: Bool = false,
         onTap: @escaping (UIButton) -> Void
     ) -> UIButton {
         let b = UIButton(type: .system)
         b.setTitle(title, for: .normal)
-        b.setTitleColor(.white, for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 16, weight: .regular)
-        b.backgroundColor = UIColor(red: 29/255, green: 29/255, blue: 34/255, alpha: 1)
-        b.layer.cornerRadius = 6
+        b.setTitleColor(modifier ? Pal.modFg : Pal.keyFg, for: .normal)
+        b.titleLabel?.font = .systemFont(
+            ofSize: modifier ? 14 : 16,
+            weight: modifier ? .semibold : .regular,
+        )
+        b.backgroundColor = modifier ? Pal.modBg : Pal.keyBg
+        b.layer.cornerRadius = 8
+        b.layer.shadowColor = UIColor.black.cgColor
+        b.layer.shadowOpacity = 0.04
+        b.layer.shadowRadius = 1
+        b.layer.shadowOffset = CGSize(width: 0, height: 1)
         b.translatesAutoresizingMaskIntoConstraints = false
         let action = UIAction { _ in onTap(b) }
         b.addAction(action, for: .touchUpInside)
         b.setContentHuggingPriority(.defaultLow, for: .horizontal)
         b.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        // Encode weight via a width multiplier among siblings (handled by
-        // distribution=.fill + custom widths via constraints between buttons
-        // is complex; simpler: use intrinsic baseline + weight via width.
-        // We use distribution=.fill and width via multiplier on an invisible
-        // anchor — for simplicity here, we add a width constraint relative
-        // to the row's first button. For MVP, distribution=.fillEqually
-        // approximation by cloning, not weighted. To keep code small:
-        // approximate weight with a min-width contentHuggingPriority delta.
         if weight != 1 {
-            // Fallback: set explicit width via multiplier later in row layout.
             b.widthAnchor.constraint(greaterThanOrEqualToConstant: 30 * weight).isActive = true
         }
         return b
     }
 
     private func makeMicKey() -> UIButton {
+        // Belovik mic: graphite circle (not red — per brandbook).
         let b = UIButton(type: .system)
         b.setTitle("🎤", for: .normal)
         b.titleLabel?.font = .systemFont(ofSize: 22, weight: .semibold)
-        b.backgroundColor = UIColor(red: 239/255, green: 68/255, blue: 68/255, alpha: 1)
-        b.layer.cornerRadius = 6
+        b.backgroundColor = Pal.micBg
+        b.layer.cornerRadius = 8
+        b.layer.shadowColor = UIColor.black.cgColor
+        b.layer.shadowOpacity = 0.18
+        b.layer.shadowRadius = 4
+        b.layer.shadowOffset = CGSize(width: 0, height: 2)
         b.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
         b.addAction(UIAction { [weak self] _ in self?.openMainAppForDictation() }, for: .touchUpInside)
         return b
@@ -177,7 +194,7 @@ final class KeyboardViewController: UIInputViewController {
     private func flashStatus(_ text: String) {
         statusLabel.text = text
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.statusLabel.text = "wispr-alt"
+            self?.statusLabel.text = "Беловик"
         }
     }
 

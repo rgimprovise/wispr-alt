@@ -3,7 +3,7 @@ import AVFoundation
 
 /// Recording screen launched via wispralt://dictate from the keyboard.
 struct DictateView: View {
-    enum State {
+    enum Phase {
         case idle
         case recording
         case transcribing
@@ -12,13 +12,18 @@ struct DictateView: View {
     }
 
     @StateObject private var recorder = AudioRecorder()
-    @State private var state: State = .idle
+    @StateObject private var styleStore = StyleStore()
+    @State private var state: Phase = .idle
+    @State private var showingStylePicker = false
 
     var body: some View {
         ZStack {
             BelovikColor.paper.ignoresSafeArea()
 
             VStack(spacing: 24) {
+                styleChip
+                    .padding(.top, 16)
+
                 Spacer()
 
                 statusBadge
@@ -43,6 +48,38 @@ struct DictateView: View {
             }
         }
         .onAppear { startRecording() }
+        .confirmationDialog(
+            "Стиль обработки",
+            isPresented: $showingStylePicker,
+            titleVisibility: .visible
+        ) {
+            ForEach(DictationStyle.allCases) { style in
+                Button(style.label) { styleStore.current = style }
+            }
+            Button("Отмена", role: .cancel) {}
+        } message: {
+            Text(styleStore.current.hint)
+        }
+    }
+
+    /// Compact pill at the top showing the active style. Tap = open picker.
+    private var styleChip: some View {
+        Button { showingStylePicker = true } label: {
+            HStack(spacing: 6) {
+                Image(systemName: "wand.and.stars")
+                    .font(.system(size: 11, weight: .medium))
+                Text(styleStore.current.label)
+                    .font(.belovikUI(12, weight: .semibold))
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .semibold))
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 7)
+            .foregroundStyle(BelovikColor.textPrimary)
+            .background(BelovikColor.surface, in: Capsule())
+            .overlay(Capsule().stroke(BelovikColor.borderSubtle, lineWidth: 1))
+        }
+        .buttonStyle(.plain)
     }
 
     private var statusBadge: some View {
@@ -158,9 +195,10 @@ struct DictateView: View {
             return
         }
         state = .transcribing
+        let style = styleStore.current
         Task {
             do {
-                let text = try await Backend.transcribe(wav: wav)
+                let text = try await Backend.transcribe(wav: wav, style: style)
                 await MainActor.run {
                     SharedStorage.savePendingTranscript(text)
                     state = .done(text)

@@ -3,61 +3,155 @@
  *
  * Models:
  *   - gpt-4o-mini-transcribe — newer/faster than whisper-1, supports prompt
- *     priming for domain-specific vocab. ~$0.18/hr. Russian quality is
- *     materially better than Whisper-large-v3 with the right prompt.
- *   - gpt-4o-mini for filler/punctuation cleanup. ~$0.15/M input tokens.
+ *     priming for domain-specific vocab.
+ *   - gpt-5-nano for cleanup. ~2× faster than gpt-4o-mini, similar quality
+ *     for filler removal + light formatting.
  *
  * Env required:
  *   OPENAI_API_KEY  — required
- *
- * API reference: https://platform.openai.com/docs/api-reference/audio
  */
+
+export type Style =
+  | "clean" // default — remove fillers, fix punctuation, paragraph breaks
+  | "business" // formal email/business tone
+  | "casual" // conversational, friendly
+  | "brief" // condensed, bullet points / short
+  | "telegram" // Telegram-post style: structured, readable
+  | "email" // email format with greeting + sign-off
+  | "task"; // restructure as todo / action items
 
 export interface TranscribeOpts {
   audio: File;
-  language?: string; // "ru", "en", etc. Falls back to auto-detect.
+  language?: string;
   postprocess?: boolean;
+  style?: Style;
 }
 
 export interface TranscribeResult {
   raw: string;
   clean: string;
-  latencyMs: {
-    transcribe: number;
-    postprocess: number;
-    total: number;
-  };
+  style: Style;
+  latencyMs: { transcribe: number; postprocess: number; total: number };
 }
 
 const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 const LLM_MODEL = "gpt-5-nano";
 
-/**
- * Russian-context priming for the transcriber. Whisper / gpt-4o-transcribe
- * uses this as a soft hint about the domain — improves accuracy on names,
- * mixed-language tokens, и common Russian filler/idioms.
- *
- * Keep short; the model uses it as a stylistic hint, not a hard constraint.
- */
 const TRANSCRIBE_PROMPT_RU =
   "Это запись повседневной русской речи: разговоры, диктовка заметок, рабочие сообщения. " +
   "В тексте могут быть имена собственные, технические термины и отдельные английские слова. " +
   "Записывайте речь дословно, включая запинки и паузы — пунктуацию расставьте.";
 
-const POSTPROCESS_SYSTEM = `Вы очищаете сырые транскрипции речи для последующей вставки в текстовое поле.
+/* ───────────────────── Style prompts ───────────────────── */
 
-Правила:
-- Удаляйте слова-паразиты ("эээ", "ну", "вот", "как бы", "типа", "э-э", "м-м", "uh", "um"), но сохраняйте осмысленные паузы.
-- Расставляйте корректную пунктуацию и заглавные буквы.
-- Сохраняйте голос, словарь и смысл говорящего ТОЧНО. Не перефразируйте, не сокращайте, не "улучшайте" формулировки.
+/**
+ * Common rules included in every style. Crucially: instructions about
+ * paragraph breaks and line breaks — LLM uses context + natural pauses
+ * (already reflected in punctuation) to decide where to start a new
+ * paragraph.
+ */
+const COMMON_RULES = `
+Общие правила для ВСЕХ стилей:
+- Удаляйте слова-паразиты: «эээ», «ну», «вот», «как бы», «типа», «э-э», «м-м», "uh", "um".
+  Сохраняйте осмысленные паузы и заминки только если они несут смысл.
+- Расставляйте корректную пунктуацию (запятые, точки, тире, двоеточия) и заглавные буквы.
+- Разбивайте текст на абзацы пустой строкой (\\n\\n) при:
+   • смене темы или сюжетного блока,
+   • переходе к перечислению или списку,
+   • явной длинной паузе (видна по словесным маркерам «так», «итак», «значит»,
+     «короче», «давайте дальше», смене времени или объекта обсуждения),
+   • переходе от размышления к действию / выводу.
+- Внутри одного абзаца переносы строк (\\n) ставьте при перечислении пунктов
+  (1. ... 2. ... или маркеры ”—” / "•").
+- При смешении языков сохраняйте оба как есть.
+- Числа: в коротких счётных фразах («раз два три») — словами; в длинных
+  диктовках с конкретными цифрами («восемь часов вечера», «двадцать пять
+  процентов») — преобразуйте в цифры.
+- Выводите ТОЛЬКО результат. Без преамбулы, кавычек, префикса «Текст:».
+`.trim();
+
+const STYLE_RULES: Record<Style, string> = {
+  clean: `
+Стиль: «Чистка» — нейтральный.
+- Сохраняйте голос, словарь и смысл говорящего ТОЧНО.
+- Не перефразируйте, не сокращайте, не «улучшайте» формулировки.
 - Если транскрипция — одно предложение, выдайте одно предложение.
-- При смешении языков (русский с английскими терминами) сохраняйте оба как есть.
-- Числа, написанные словами в коротких фразах ("раз два три"), оставляйте словами; в длинных диктовках где явно подразумеваются цифры ("восемь часов вечера") — преобразуйте в цифры.
-- Выводите ТОЛЬКО очищенную транскрипцию. Без преамбулы, без объяснений, без кавычек, без префикса "Текст:" и т.п.`;
+- Если несколько предложений или длинная диктовка — разбейте на абзацы по
+  смыслу.
+`.trim(),
+
+  business: `
+Стиль: «Деловой» — формальная рабочая речь.
+- Подчищайте разговорные обороты: «короче» → убрать; «прикольно» → «интересно»;
+  «крутой» → «эффективный/удачный».
+- Используйте «Вы» с большой буквы при обращении.
+- Активный залог, конкретные формулировки. Избегайте громоздких канцеляризмов
+  («осуществляется», «является», «производится»).
+- Структурируйте: абзацы по темам, маркированные списки при перечислении задач
+  или фактов.
+- Сохраняйте основной смысл и факты — не выдумывайте новых.
+`.trim(),
+
+  casual: `
+Стиль: «Неформальный» — разговорный, дружеский тон.
+- Можно оставить мягкие разговорные обороты («короче», «слушай», «как раз»),
+  убирайте только явный мусор («эээ», «ну вот»).
+- «Ты», простая речь, эмоциональные акценты сохраняйте.
+- Абзацы по смысловым блокам.
+- Если речь идёт сообщением другу — оставляйте человеческий тон,
+  не «причесывайте» в формальный.
+`.trim(),
+
+  brief: `
+Стиль: «Краткий» — сжато, по сути.
+- Уберите всю воду: повторы, отступления, разъяснения уже понятного.
+- Сохраните только ключевые факты, действия, решения.
+- Формат: короткие предложения или маркированные пункты.
+- Если в речи перечисление — обязательно списком.
+- Если одна мысль — одно предложение, без украшений.
+`.trim(),
+
+  telegram: `
+Стиль: «Telegram-пост» — структурированный пост для канала.
+- Первая строка — крючок (factual, без кликбейта).
+- Дальше тело: 2–4 коротких абзаца, каждый — одна мысль.
+- Списки оформлять с маркерами «—» или цифрами.
+- Без emoji (юзер добавит сам).
+- Ссылки/упоминания/имена сохраняйте как есть.
+- Конец: либо вывод одной строкой, либо вопрос аудитории.
+`.trim(),
+
+  email: `
+Стиль: «Email» — структура делового письма.
+- Если есть приветствие в начале речи («привет, Иван», «здравствуйте») —
+  оформите его как первую строку.
+- Тело: 1–3 абзаца с темами, разделёнными пустой строкой.
+- Если речь содержит запрос или задачу — выделите её отдельным абзацем.
+- В конце: «С уважением, [имя]» только если в речи говоривший назвался.
+  Если нет — без подписи.
+- Тон деловой, вежливый.
+`.trim(),
+
+  task: `
+Стиль: «Задача» — структурированный action-item.
+- Выделите главную задачу одной строкой в начале (заголовок без точки).
+- Затем блоки:
+  «Контекст:» — 1–2 предложения зачем это.
+  «Что сделать:» — список пунктов с маркером «—».
+  «Срок:» — если упоминался.
+  «Кому:» — если упоминался ответственный.
+- Опускайте блоки которых нет в речи. Не выдумывайте.
+- Без вступительных фраз, чисто структура.
+`.trim(),
+};
+
+/* ───────────────────── Main entry ───────────────────── */
 
 export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
+
+  const style: Style = opts.style ?? "clean";
 
   const t0 = performance.now();
 
@@ -67,9 +161,6 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   form.append("model", TRANSCRIBE_MODEL);
   form.append("response_format", "json");
   form.append("temperature", "0");
-  // Russian context prompt by default; if caller specifies English, skip.
-  // (Mixed-language audio benefits more from the RU prompt because Whisper
-  // already handles English well.)
   if (!opts.language || opts.language.toLowerCase().startsWith("ru")) {
     form.append("prompt", TRANSCRIBE_PROMPT_RU);
   }
@@ -93,16 +184,23 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   const raw = transcribeJson.text.trim();
   const t1 = performance.now();
 
-  // 2. Optional GPT cleanup
+  // 2. Cleanup
   let clean = raw;
   if (opts.postprocess && raw.length > 0) {
-    clean = await cleanWithGpt(raw, apiKey);
+    if (shouldSkipCleanup(raw)) {
+      // Very short utterances ("да", "нет", "ок") don't need a model call.
+      // Just normalize whitespace + capitalize first letter.
+      clean = quickNormalize(raw);
+    } else {
+      clean = await cleanWithGpt(raw, apiKey, style);
+    }
   }
 
   const t2 = performance.now();
   return {
     raw,
     clean,
+    style,
     latencyMs: {
       transcribe: Math.round(t1 - t0),
       postprocess: Math.round(t2 - t1),
@@ -111,7 +209,31 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
   };
 }
 
-async function cleanWithGpt(raw: string, apiKey: string): Promise<string> {
+/* ───────────────────── Cleanup helpers ───────────────────── */
+
+/**
+ * Whether the text is too short / trivial to bother sending to LLM.
+ * Saves ~1-2s round-trip latency on quick "yes/no/ok" dictations.
+ */
+function shouldSkipCleanup(text: string): boolean {
+  const words = text.split(/\s+/).filter(Boolean);
+  if (words.length <= 3) return true;
+  return false;
+}
+
+function quickNormalize(text: string): string {
+  let t = text.trim().replace(/\s+/g, " ");
+  if (t.length > 0) t = (t[0]!).toUpperCase() + t.slice(1);
+  return t;
+}
+
+async function cleanWithGpt(
+  raw: string,
+  apiKey: string,
+  style: Style,
+): Promise<string> {
+  const system = `${COMMON_RULES}\n\n${STYLE_RULES[style]}`;
+
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -120,11 +242,9 @@ async function cleanWithGpt(raw: string, apiKey: string): Promise<string> {
     },
     body: JSON.stringify({
       model: LLM_MODEL,
-      // GPT-5 family uses max_completion_tokens instead of max_tokens.
-      // The new name is also accepted by gpt-4o family — safe for both.
-      max_completion_tokens: 1024,
+      max_completion_tokens: 768,
       messages: [
-        { role: "system", content: POSTPROCESS_SYSTEM },
+        { role: "system", content: system },
         { role: "user", content: raw },
       ],
     }),

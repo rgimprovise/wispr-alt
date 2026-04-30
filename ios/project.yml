@@ -9,7 +9,7 @@ name: Belovik
 options:
   bundleIdPrefix: com.wispralt
   deploymentTarget:
-    iOS: "16.0"
+    iOS: "17.0"
   developmentLanguage: ru
 
 settings:

@@ -1,0 +1,458 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05F5E38FB22782403948655D /* DictateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 305586C0DD24439C7BCA9D74 /* DictateView.swift */; };
+		06AE914B700D816DF0DE2BFA /* AudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 604D49FFE7755C46C492A62B /* AudioRecorder.swift */; };
+		151BB73E91E435CD71211D99 /* App.swift in Sources */ = {isa = PBXBuildFile; fileRef = 275916E5255128353433EB3F /* App.swift */; };
+		2EFA32BA0C5E9DEEB2517B59 /* BelovikKeyboard.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 65EF59788BC0A67F66E132F0 /* BelovikKeyboard.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		37DEFF2E19EEC133E47B2D4A /* KeyboardViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E786841B375CE13A445D196 /* KeyboardViewController.swift */; };
+		3AA370F8D22EA37844FC0FCF /* BelovikTokens.swift in Sources */ = {isa = PBXBuildFile; fileRef = 740824209705903E7F3979C9 /* BelovikTokens.swift */; };
+		529138C5CDE57E1EDCF9581C /* OnboardingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D15167FD60AE85C39217FF /* OnboardingView.swift */; };
+		61A231DDFF3AD098D44CDA0E /* Backend.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B40B66148E0A02245BF8E8E /* Backend.swift */; };
+		AA6CBB49D19EC335007F43F2 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 576396F6F17D92ACA75AE62B /* SharedStorage.swift */; };
+		CBA49A46902CEC7D1A5F4365 /* SharedStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86411D40A09AFDC23FC89195 /* SharedStorage.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		7FB425EE7CC8A4552061F160 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 73D55C27E55534DFD5BE6D32 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 5609ABE2701086A30847F5DC;
+			remoteInfo = BelovikKeyboard;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		9638D345A84A52F25105708D /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				2EFA32BA0C5E9DEEB2517B59 /* BelovikKeyboard.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		275916E5255128353433EB3F /* App.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = App.swift; sourceTree = "<group>"; };
+		2CACD73C50BCA61D1C38EB7B /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		2E2710692FA2A2E800F625D2 /* Belovik.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Belovik.entitlements; sourceTree = "<group>"; };
+		2E27106A2FA2A33100F625D2 /* BelovikKeyboard.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = BelovikKeyboard.entitlements; sourceTree = "<group>"; };
+		305586C0DD24439C7BCA9D74 /* DictateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DictateView.swift; sourceTree = "<group>"; };
+		4B40B66148E0A02245BF8E8E /* Backend.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Backend.swift; sourceTree = "<group>"; };
+		576396F6F17D92ACA75AE62B /* SharedStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStorage.swift; sourceTree = "<group>"; };
+		604D49FFE7755C46C492A62B /* AudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecorder.swift; sourceTree = "<group>"; };
+		65EF59788BC0A67F66E132F0 /* BelovikKeyboard.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = BelovikKeyboard.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		740824209705903E7F3979C9 /* BelovikTokens.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BelovikTokens.swift; sourceTree = "<group>"; };
+		7E786841B375CE13A445D196 /* KeyboardViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardViewController.swift; sourceTree = "<group>"; };
+		86411D40A09AFDC23FC89195 /* SharedStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SharedStorage.swift; sourceTree = "<group>"; };
+		9315DFB4318D31B90E601A3B /* Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Debug.xcconfig; sourceTree = "<group>"; };
+		B942623572600F7412FAE3CF /* Belovik.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Belovik.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		C1D15167FD60AE85C39217FF /* OnboardingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingView.swift; sourceTree = "<group>"; };
+		DF144EB4E9027491A35CCB54 /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = Release.xcconfig; sourceTree = "<group>"; };
+		E3C7D3C8F4852B860534679D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		0E79525341E32FA4BD0AB048 /* wispr-alt */ = {
+			isa = PBXGroup;
+			children = (
+				275916E5255128353433EB3F /* App.swift */,
+				604D49FFE7755C46C492A62B /* AudioRecorder.swift */,
+				4B40B66148E0A02245BF8E8E /* Backend.swift */,
+				740824209705903E7F3979C9 /* BelovikTokens.swift */,
+				305586C0DD24439C7BCA9D74 /* DictateView.swift */,
+				2CACD73C50BCA61D1C38EB7B /* Info.plist */,
+				C1D15167FD60AE85C39217FF /* OnboardingView.swift */,
+				86411D40A09AFDC23FC89195 /* SharedStorage.swift */,
+			);
+			path = "wispr-alt";
+			sourceTree = "<group>";
+		};
+		36FF54042A4B2AF108D06325 /* Configs */ = {
+			isa = PBXGroup;
+			children = (
+				9315DFB4318D31B90E601A3B /* Debug.xcconfig */,
+				DF144EB4E9027491A35CCB54 /* Release.xcconfig */,
+			);
+			path = Configs;
+			sourceTree = "<group>";
+		};
+		3ABBE544D832111B7020A216 = {
+			isa = PBXGroup;
+			children = (
+				2E27106A2FA2A33100F625D2 /* BelovikKeyboard.entitlements */,
+				2E2710692FA2A2E800F625D2 /* Belovik.entitlements */,
+				36FF54042A4B2AF108D06325 /* Configs */,
+				0E79525341E32FA4BD0AB048 /* wispr-alt */,
+				80569489891262342A359FD1 /* wispr-alt-keyboard */,
+				C6E481F49B43A678AB0FFEEE /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		80569489891262342A359FD1 /* wispr-alt-keyboard */ = {
+			isa = PBXGroup;
+			children = (
+				E3C7D3C8F4852B860534679D /* Info.plist */,
+				7E786841B375CE13A445D196 /* KeyboardViewController.swift */,
+				576396F6F17D92ACA75AE62B /* SharedStorage.swift */,
+			);
+			path = "wispr-alt-keyboard";
+			sourceTree = "<group>";
+		};
+		C6E481F49B43A678AB0FFEEE /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B942623572600F7412FAE3CF /* Belovik.app */,
+				65EF59788BC0A67F66E132F0 /* BelovikKeyboard.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		5609ABE2701086A30847F5DC /* BelovikKeyboard */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 288C80015AE29994F2BA6D91 /* Build configuration list for PBXNativeTarget "BelovikKeyboard" */;
+			buildPhases = (
+				522AF170DAF6FA5B255188B9 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BelovikKeyboard;
+			packageProductDependencies = (
+			);
+			productName = BelovikKeyboard;
+			productReference = 65EF59788BC0A67F66E132F0 /* BelovikKeyboard.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		80496572E0CDF8EB4C818953 /* Belovik */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A5A9A408D05D182310026B07 /* Build configuration list for PBXNativeTarget "Belovik" */;
+			buildPhases = (
+				694004394201316619A55E0D /* Sources */,
+				9638D345A84A52F25105708D /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				EDBDF06AC0055D569E39E985 /* PBXTargetDependency */,
+			);
+			name = Belovik;
+			packageProductDependencies = (
+			);
+			productName = Belovik;
+			productReference = B942623572600F7412FAE3CF /* Belovik.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		73D55C27E55534DFD5BE6D32 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					5609ABE2701086A30847F5DC = {
+						ProvisioningStyle = Automatic;
+					};
+					80496572E0CDF8EB4C818953 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = D37F6851883472E592E64956 /* Build configuration list for PBXProject "Belovik" */;
+			developmentRegion = ru;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				ru,
+			);
+			mainGroup = 3ABBE544D832111B7020A216;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = C6E481F49B43A678AB0FFEEE /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				80496572E0CDF8EB4C818953 /* Belovik */,
+				5609ABE2701086A30847F5DC /* BelovikKeyboard */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		522AF170DAF6FA5B255188B9 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				37DEFF2E19EEC133E47B2D4A /* KeyboardViewController.swift in Sources */,
+				AA6CBB49D19EC335007F43F2 /* SharedStorage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		694004394201316619A55E0D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				151BB73E91E435CD71211D99 /* App.swift in Sources */,
+				06AE914B700D816DF0DE2BFA /* AudioRecorder.swift in Sources */,
+				61A231DDFF3AD098D44CDA0E /* Backend.swift in Sources */,
+				3AA370F8D22EA37844FC0FCF /* BelovikTokens.swift in Sources */,
+				05F5E38FB22782403948655D /* DictateView.swift in Sources */,
+				529138C5CDE57E1EDCF9581C /* OnboardingView.swift in Sources */,
+				CBA49A46902CEC7D1A5F4365 /* SharedStorage.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		EDBDF06AC0055D569E39E985 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 5609ABE2701086A30847F5DC /* BelovikKeyboard */;
+			targetProxy = 7FB425EE7CC8A4552061F160 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		084ED98472058DDE131942A8 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BelovikKeyboard.entitlements;
+				DEVELOPMENT_TEAM = D98YC4Y5Y4;
+				INFOPLIST_FILE = "wispr-alt-keyboard/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rgimprovise.belovik.keyboard;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		2028A384D63980227EA6CB17 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = DF144EB4E9027491A35CCB54 /* Release.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+		5021522106748A6BAEC4D6C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Belovik.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = D98YC4Y5Y4;
+				INFOPLIST_FILE = "wispr-alt/Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rgimprovise.belovik;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		B8422248F8AD32C10ABBA82D /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BelovikKeyboard.entitlements;
+				DEVELOPMENT_TEAM = D98YC4Y5Y4;
+				INFOPLIST_FILE = "wispr-alt-keyboard/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rgimprovise.belovik.keyboard;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		C90181BD5889E59F36BEFDCC /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Belovik.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = D98YC4Y5Y4;
+				INFOPLIST_FILE = "wispr-alt/Info.plist";
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.rgimprovise.belovik;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		EDA8412D76B7CBC1562626B5 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9315DFB4318D31B90E601A3B /* Debug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = "";
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		288C80015AE29994F2BA6D91 /* Build configuration list for PBXNativeTarget "BelovikKeyboard" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				084ED98472058DDE131942A8 /* Debug */,
+				B8422248F8AD32C10ABBA82D /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		A5A9A408D05D182310026B07 /* Build configuration list for PBXNativeTarget "Belovik" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5021522106748A6BAEC4D6C6 /* Debug */,
+				C90181BD5889E59F36BEFDCC /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		D37F6851883472E592E64956 /* Build configuration list for PBXProject "Belovik" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				EDA8412D76B7CBC1562626B5 /* Debug */,
+				2028A384D63980227EA6CB17 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 73D55C27E55534DFD5BE6D32 /* Project object */;
+}

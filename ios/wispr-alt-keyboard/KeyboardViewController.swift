@@ -176,16 +176,22 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func makeMicKey() -> UIButton {
-        // Belovik mic: graphite circle (not red — per brandbook).
-        let b = UIButton(type: .system)
-        b.setTitle("🎤", for: .normal)
-        b.titleLabel?.font = .systemFont(ofSize: 22, weight: .semibold)
+        // Belovik dictation key: rounded square graphite with the «Б» mark
+        // centered as a watermark, whole button at 60% opacity. No mic emoji
+        // — the brand mark IS the affordance.
+        let b = UIButton(type: .custom)
+        let size = CGSize(width: 60, height: 60)
+        let bMark = BelovikMark.image(size: size, color: UIColor.white)
+        b.setImage(bMark, for: .normal)
+        b.imageView?.contentMode = .scaleAspectFit
+        b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
         b.backgroundColor = Pal.micBg
-        b.layer.cornerRadius = 8
+        b.layer.cornerRadius = 12
         b.layer.shadowColor = UIColor.black.cgColor
         b.layer.shadowOpacity = 0.18
         b.layer.shadowRadius = 4
         b.layer.shadowOffset = CGSize(width: 0, height: 2)
+        b.alpha = 0.6
         b.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
         b.addAction(UIAction { [weak self] _ in self?.openMainAppForDictation() }, for: .touchUpInside)
         return b

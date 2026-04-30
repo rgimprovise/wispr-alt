@@ -13,6 +13,7 @@ import android.view.MotionEvent
 import android.view.View
 import android.view.WindowManager
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.TextView
 import kotlinx.coroutines.CoroutineScope
@@ -299,24 +300,27 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildBubble(): FrameLayout {
-        // Belovik bubble: graphite circle on paper-pure, soft shadow.
+        // Belovik bubble: rounded square (16dp radius) with the Б mark
+        // centered, whole bubble at 60% opacity for the soft watermark feel.
         val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
-                shape = GradientDrawable.OVAL
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(16).toFloat()
                 setColor(0xFF1F2733.toInt()) // graphite
                 setStroke(dp(1), 0x29FCFAF6.toInt())
             }
             elevation = dp(8).toFloat()
+            alpha = 0.6f
         }
-        val icon = TextView(ctx).apply {
-            text = "🎤"
-            setTextColor(0xFFFCFAF6.toInt()) // paper-pure for high contrast on graphite
-            setTextSize(TypedValue.COMPLEX_UNIT_SP, 22f)
-            gravity = Gravity.CENTER
+        val icon = ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_belovik_b)
+            setColorFilter(0xFFFCFAF6.toInt())
+            scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT,
             )
+            setPadding(dp(10), dp(10), dp(10), dp(10))
         }
         outer.addView(icon)
         outer.setOnClickListener {
@@ -424,8 +428,10 @@ class OverlayController(private val service: WisprService) {
         }
 
         // No red — graphite for primary mic, soft surfaces for secondary buttons.
+        // Mic is now a Belovik-Б watermark on a graphite square (60% alpha),
+        // not the 🎤 emoji.
         val cancelBtn = circleButton("✕", 0xFFE8E5DD.toInt(), fg = 0xFF555A63.toInt()) { onCancelTap() }
-        val micBtn = circleButton("🎤", 0xFF1F2733.toInt(), fg = 0xFFFCFAF6.toInt(), big = true) { onMicTap() }
+        val micBtn = belovikSquareButton(big = true) { onMicTap() }
         val confirmBtn = circleButton("✓", 0xFFECEFEA.toInt(), fg = 0xFF5C7A5A.toInt()) { onConfirmTap() }
 
         controls.addView(cancelBtn)
@@ -467,6 +473,40 @@ class OverlayController(private val service: WisprService) {
         val v = View(ctx)
         v.layoutParams = LinearLayout.LayoutParams(width, 1)
         return v
+    }
+
+    /**
+     * Mic-equivalent button: rounded square graphite with the Belovik «Б»
+     * mark centered, whole button at 60% opacity. Matches the bubble visual
+     * language so it reads as the same brand element.
+     */
+    private fun belovikSquareButton(big: Boolean, onTap: () -> Unit): View {
+        val size = if (big) dp(56) else dp(44)
+        val outer = FrameLayout(ctx).apply {
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(if (big) 16 else 12).toFloat()
+                setColor(0xFF1F2733.toInt())
+            }
+            alpha = 0.6f
+            layoutParams = LinearLayout.LayoutParams(size, size)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onTap() }
+        }
+        val icon = ImageView(ctx).apply {
+            setImageResource(R.drawable.ic_belovik_b)
+            setColorFilter(0xFFFCFAF6.toInt())
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            val pad = if (big) dp(12) else dp(10)
+            setPadding(pad, pad, pad, pad)
+            layoutParams = FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+            )
+        }
+        outer.addView(icon)
+        return outer
     }
 
     // ─── Control taps ──────────────────────────────────────────────────────

@@ -15,6 +15,7 @@ import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
+import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
@@ -294,7 +295,10 @@ class MainActivity : AppCompatActivity() {
 
         val running = WisprService.instance != null
         c.addView(serviceToggleCard(running))
-        c.addView(spacer(dp(20)))
+        c.addView(spacer(dp(16)))
+
+        c.addView(styleCard())
+        c.addView(spacer(dp(16)))
 
         if (!hasMic()) c.addView(gateBanner(
             "Микрофон не разрешён",
@@ -375,6 +379,72 @@ class MainActivity : AppCompatActivity() {
             }
         })
         return card
+    }
+
+    private fun styleCard(): View {
+        val current = StyleStore.get(this)
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(20), dp(22), dp(20))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = dp(20).toFloat()
+                setColor(col(R.color.surface_1))
+                setStroke(dp(1), col(R.color.border_subtle))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showStyleDialog() }
+        }
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        header.addView(TextView(this).apply {
+            text = "Стиль обработки"
+            setTextColor(col(R.color.text_primary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            layoutParams = LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f)
+        })
+        header.addView(TextView(this).apply {
+            text = current.label
+            setTextColor(col(R.color.graphite))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 14f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        header.addView(TextView(this).apply {
+            text = "  ›"
+            setTextColor(col(R.color.text_tertiary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+        })
+        card.addView(header)
+        card.addView(spacer(dp(6)))
+        card.addView(TextView(this).apply {
+            text = current.hint
+            setTextColor(col(R.color.text_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setLineSpacing(0f, 1.4f)
+        })
+        return card
+    }
+
+    private fun showStyleDialog() {
+        val styles = DictationStyle.entries
+        val labels = styles.map { "${it.label}\n${it.hint}" }.toTypedArray()
+        val current = StyleStore.get(this)
+        val checkedIndex = styles.indexOf(current).coerceAtLeast(0)
+
+        AlertDialog.Builder(this)
+            .setTitle("Стиль обработки")
+            .setSingleChoiceItems(labels, checkedIndex) { dialog, which ->
+                StyleStore.set(this, styles[which])
+                dialog.dismiss()
+                renderForState() // refresh card with new selection
+            }
+            .setNegativeButton("Отмена", null)
+            .show()
     }
 
     private fun gateBanner(

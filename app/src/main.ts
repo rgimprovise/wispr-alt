@@ -91,6 +91,13 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   const form = new FormData();
   form.append("audio", blob, "final.wav");
   form.append("postprocess", "true");
+  // Read current style from Rust settings (persisted across launches).
+  try {
+    const style = (await invoke("get_style")) as string;
+    if (style) form.append("style", style);
+  } catch {
+    /* style optional; backend defaults to "clean" */
+  }
   const res = await fetch(`${BACKEND_URL}/transcribe`, {
     method: "POST",
     body: form,
@@ -229,7 +236,57 @@ window.addEventListener("DOMContentLoaded", async () => {
     log(`failed to load hotkey: ${err}`);
   }
   wireHotkeyPicker();
+
+  // Load current style and wire up the dropdown.
+  try {
+    const current = (await invoke("get_style")) as string;
+    updateStyleUI(current);
+  } catch (err) {
+    log(`failed to load style: ${err}`);
+  }
+  wireStylePicker();
 });
+
+// ─── Style picker ──────────────────────────────────────────────────────────
+
+const STYLE_HINTS: Record<string, string> = {
+  clean: "Снять «эээ», расставить пунктуацию, разбить на абзацы",
+  business: "Формальный рабочий тон, активный залог, структура",
+  casual: "Сохранить разговорный тон, мягкая чистка",
+  brief: "Только суть, маркированные пункты",
+  telegram: "Структурированный пост: крючок, абзацы, без эмодзи",
+  email: "Письмо с приветствием, темами и подписью",
+  task: "Action-item: контекст, что сделать, срок",
+};
+
+function updateStyleUI(style: string) {
+  const sel = document.getElementById("style-picker") as HTMLSelectElement | null;
+  const hint = document.getElementById("style-hint");
+  if (sel) sel.value = style;
+  if (hint) hint.textContent = STYLE_HINTS[style] ?? "";
+}
+
+function wireStylePicker() {
+  const sel = document.getElementById("style-picker") as HTMLSelectElement | null;
+  if (!sel) return;
+  sel.addEventListener("change", async () => {
+    const next = sel.value;
+    try {
+      await invoke("set_style", { style: next });
+      updateStyleUI(next);
+      log(`style → ${next}`);
+    } catch (err) {
+      log(`set_style failed: ${err}`);
+      // Revert UI to previously persisted value.
+      try {
+        const current = (await invoke("get_style")) as string;
+        updateStyleUI(current);
+      } catch {
+        /* noop */
+      }
+    }
+  });
+}
 
 // ─── Hotkey picker ─────────────────────────────────────────────────────────
 

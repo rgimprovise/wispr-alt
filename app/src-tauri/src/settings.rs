@@ -9,12 +9,21 @@ use tauri::{AppHandle, Manager};
 pub struct Settings {
     /// Electron-style shortcut string, e.g. "F5", "CmdOrCtrl+Shift+Space".
     pub hotkey: String,
+    /// Cleanup style sent to /transcribe. Must match the backend Style union
+    /// (clean / business / casual / brief / telegram / email / task).
+    #[serde(default = "default_style")]
+    pub style: String,
+}
+
+fn default_style() -> String {
+    "clean".into()
 }
 
 impl Default for Settings {
     fn default() -> Self {
         Self {
             hotkey: "F5".to_string(),
+            style: default_style(),
         }
     }
 }

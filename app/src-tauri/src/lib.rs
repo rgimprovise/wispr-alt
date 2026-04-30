@@ -84,6 +84,30 @@ fn get_hotkey(app: tauri::AppHandle) -> String {
     settings::load(&app).hotkey
 }
 
+const VALID_STYLES: &[&str] = &[
+    "clean", "business", "casual", "brief", "telegram", "email", "task",
+];
+
+/// Returns the user's preferred cleanup style (e.g. "clean", "business").
+#[tauri::command]
+fn get_style(app: tauri::AppHandle) -> String {
+    settings::load(&app).style
+}
+
+/// Persists the user's chosen cleanup style. Validates against the known
+/// list; unknown values are rejected.
+#[tauri::command]
+fn set_style(app: tauri::AppHandle, style: String) -> Result<(), String> {
+    if !VALID_STYLES.contains(&style.as_str()) {
+        return Err(format!("unknown style '{style}'"));
+    }
+    let mut current = settings::load(&app);
+    current.style = style.clone();
+    settings::save(&app, &current)?;
+    eprintln!("[settings] style set to {style}");
+    Ok(())
+}
+
 /// Unregister the current global shortcut and register the new one, then
 /// persist to disk. The shortcut string must be in the electron-style
 /// format that `Shortcut::from_str` understands.
@@ -111,9 +135,10 @@ fn set_hotkey(
         .map_err(|e| format!("register '{combo}': {e}"))?;
     *state.current_hotkey.lock().unwrap() = Some(new_shortcut);
 
-    // Persist.
-    let new_settings = settings::Settings { hotkey: combo.clone() };
-    settings::save(&app, &new_settings)?;
+    // Persist (preserve other settings fields like style).
+    let mut current = settings::load(&app);
+    current.hotkey = combo.clone();
+    settings::save(&app, &current)?;
 
     eprintln!("[settings] hotkey set to {combo}");
     Ok(())
@@ -314,7 +339,9 @@ pub fn run() {
             check_accessibility,
             configure_overlay,
             get_hotkey,
-            set_hotkey
+            set_hotkey,
+            get_style,
+            set_style
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

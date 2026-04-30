@@ -637,6 +637,7 @@ class OverlayController(private val service: WisprService) {
     // ─── HTTP ──────────────────────────────────────────────────────────────
 
     private fun transcribe(wav: ByteArray, postprocess: Boolean): String? {
+        val style = StyleStore.get(ctx).raw
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
             .addFormDataPart(
@@ -645,6 +646,7 @@ class OverlayController(private val service: WisprService) {
             )
             .addFormDataPart("postprocess", postprocess.toString())
             .addFormDataPart("language", "ru")
+            .addFormDataPart("style", style)
             .build()
 
         val req = Request.Builder()

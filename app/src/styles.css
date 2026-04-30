@@ -162,6 +162,33 @@ body {
   font-weight: 600;
 }
 
+.style-picker {
+  min-width: 160px;
+  height: 40px;
+  padding: 0 32px 0 14px;
+  border-radius: var(--r-md);
+  background-color: var(--surface-1);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 4.5l3 3 3-3' stroke='%23555A63' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 12px;
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--d-quick) var(--ease-out);
+}
+
+.style-picker:hover {
+  background-color: var(--surface-2);
+  border-color: var(--border-strong);
+}
+
 .hotkey-picker--listening {
   background: rgba(31, 39, 51, 0.06);
   border-color: var(--graphite);

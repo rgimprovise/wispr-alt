@@ -300,21 +300,21 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildBubble(): FrameLayout {
-        // Belovik bubble: rounded square (16dp radius) with the Б mark
-        // centered, whole bubble at 60% opacity for the soft watermark feel.
+        // Belovik bubble: rounded square (16dp radius) on paper-pure with
+        // a graphite Б watermark, whole bubble at 60% opacity.
         val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(16).toFloat()
-                setColor(0xFF1F2733.toInt()) // graphite
-                setStroke(dp(1), 0x29FCFAF6.toInt())
+                setColor(0xFFFCFAF6.toInt()) // paper-pure
+                setStroke(dp(1), 0x1A15171A.toInt())
             }
             elevation = dp(8).toFloat()
             alpha = 0.6f
         }
         val icon = ImageView(ctx).apply {
             setImageResource(R.drawable.ic_belovik_b)
-            setColorFilter(0xFFFCFAF6.toInt())
+            setColorFilter(0xFF1F2733.toInt()) // graphite
             scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -476,9 +476,9 @@ class OverlayController(private val service: WisprService) {
     }
 
     /**
-     * Mic-equivalent button: rounded square graphite with the Belovik «Б»
-     * mark centered, whole button at 60% opacity. Matches the bubble visual
-     * language so it reads as the same brand element.
+     * Mic-equivalent button: rounded square in paper-pure with the Belovik
+     * «Б» mark centered in graphite, whole button at 60% opacity. Matches
+     * the bubble visual language — same brand element.
      */
     private fun belovikSquareButton(big: Boolean, onTap: () -> Unit): View {
         val size = if (big) dp(56) else dp(44)
@@ -486,7 +486,8 @@ class OverlayController(private val service: WisprService) {
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(if (big) 16 else 12).toFloat()
-                setColor(0xFF1F2733.toInt())
+                setColor(0xFFFCFAF6.toInt()) // paper-pure
+                setStroke(dp(1), 0x1A15171A.toInt())
             }
             alpha = 0.6f
             layoutParams = LinearLayout.LayoutParams(size, size)
@@ -496,7 +497,7 @@ class OverlayController(private val service: WisprService) {
         }
         val icon = ImageView(ctx).apply {
             setImageResource(R.drawable.ic_belovik_b)
-            setColorFilter(0xFFFCFAF6.toInt())
+            setColorFilter(0xFF1F2733.toInt()) // graphite
             scaleType = ImageView.ScaleType.FIT_CENTER
             val pad = if (big) dp(12) else dp(10)
             setPadding(pad, pad, pad, pad)

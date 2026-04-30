@@ -176,21 +176,24 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func makeMicKey() -> UIButton {
-        // Belovik dictation key: rounded square graphite with the «Б» mark
-        // centered as a watermark, whole button at 60% opacity. No mic emoji
-        // — the brand mark IS the affordance.
+        // Belovik dictation key: rounded square on paper-pure with the «Б»
+        // mark centered in graphite as a watermark, whole button at 60%
+        // opacity. No mic emoji — the brand mark IS the affordance.
         let b = UIButton(type: .custom)
         let size = CGSize(width: 60, height: 60)
-        let bMark = BelovikMark.image(size: size, color: UIColor.white)
+        let graphite = UIColor(red: 0x1F/255, green: 0x27/255, blue: 0x33/255, alpha: 1)
+        let bMark = BelovikMark.image(size: size, color: graphite)
         b.setImage(bMark, for: .normal)
         b.imageView?.contentMode = .scaleAspectFit
         b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        b.backgroundColor = Pal.micBg
+        b.backgroundColor = Pal.keyBg // paper-pure, matches letter keys
         b.layer.cornerRadius = 12
+        b.layer.borderWidth = 1
+        b.layer.borderColor = UIColor(white: 0, alpha: 0.10).cgColor
         b.layer.shadowColor = UIColor.black.cgColor
-        b.layer.shadowOpacity = 0.18
-        b.layer.shadowRadius = 4
-        b.layer.shadowOffset = CGSize(width: 0, height: 2)
+        b.layer.shadowOpacity = 0.06
+        b.layer.shadowRadius = 2
+        b.layer.shadowOffset = CGSize(width: 0, height: 1)
         b.alpha = 0.6
         b.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
         b.addAction(UIAction { [weak self] _ in self?.openMainAppForDictation() }, for: .touchUpInside)

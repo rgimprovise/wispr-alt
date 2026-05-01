@@ -59,6 +59,9 @@ export class StreamSession {
    *  so we gate the autocommit ticker on this. */
   private samplesSinceCommit = 0;
   private commitTimer: ReturnType<typeof setInterval> | null = null;
+  /** Wall-clock ms when the upstream last received any commit (manual
+   *  by us, or auto by server_vad — we observe the committed event). */
+  private lastCommitAt = 0;
 
   constructor(
     private readonly client: MinimalWS,
@@ -161,33 +164,44 @@ export class StreamSession {
             "рабочие сообщения. В тексте могут быть имена собственные, термины " +
             "и отдельные английские слова.",
         },
-        // We disable server_vad and commit manually on a fixed cadence
-        // (see scheduleAutoCommit). gpt-4o-mini-transcribe only emits
-        // deltas after a turn is committed, so VAD-based commits mean
-        // a fluent speaker waits ≥1 sentence for the first partial.
-        // Time-based commits land short turns (~2-3 words at 600 ms)
-        // for sub-second live preview at the cost of occasional
-        // mid-word cuts — fine for a preview, the final transcript is
-        // a concat of all turns.
-        turn_detection: null,
+        // server_vad gives natural turn boundaries between phrases — no
+        // mid-word cuts. But fluent speakers may go 5+ seconds without a
+        // 200ms gap, leaving the user staring at a blank overlay. We
+        // pair this with a watchdog (see scheduleAutoCommit) that forces
+        // a manual commit if 1.5s pass without any commit, so live
+        // partials always arrive at least every ~1.5s even for fluent
+        // speech, while preserving server_vad's clean breaks elsewhere.
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.3,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 200,
+        },
       },
     });
   }
 
   /**
-   * Periodically flushes the input buffer with `input_audio_buffer.commit`
-   * so the model produces a `completed` event every ~600 ms instead of
-   * waiting for VAD to detect silence. Started after the session is ready.
+   * Watchdog timer: forces a manual commit if the upstream hasn't seen
+   * a `committed` event in MAX_INTERVAL ms. Runs every 500 ms, but only
+   * actually commits when both:
+   *   - the gap since the last commit exceeds MAX_INTERVAL (1.5 s), AND
+   *   - we have ≥100 ms of audio buffered (OpenAI's commit minimum).
+   * server_vad still handles natural breaks; this just keeps fluent
+   * speakers from going dark for too long.
    */
   private scheduleAutoCommit(): void {
     if (this.commitTimer) return;
+    const MAX_INTERVAL = 1500;
+    this.lastCommitAt = Date.now();
     this.commitTimer = setInterval(() => {
       if (this.closed || this.awaitingFinal) return;
-      // OpenAI rejects commits with <100 ms (= 1600 samples @ 16 kHz).
       if (this.samplesSinceCommit < 1600) return;
+      if (Date.now() - this.lastCommitAt < MAX_INTERVAL) return;
       this.samplesSinceCommit = 0;
+      this.lastCommitAt = Date.now();
       this.sendUpstream({ type: "input_audio_buffer.commit" });
-    }, 600);
+    }, 500);
   }
 
   private stopAutoCommit(): void {
@@ -213,6 +227,13 @@ export class StreamSession {
         for (const buf of this.audioBacklog) this.forwardAudio(buf);
         this.audioBacklog = [];
         this.scheduleAutoCommit();
+        break;
+      case "input_audio_buffer.committed":
+        // Either server_vad fired naturally or our watchdog committed.
+        // Either way, reset the watchdog clock + sample counter so we
+        // don't double-commit.
+        this.lastCommitAt = Date.now();
+        this.samplesSinceCommit = 0;
         break;
       case "conversation.item.input_audio_transcription.delta": {
         const delta = (data.delta as string) ?? "";

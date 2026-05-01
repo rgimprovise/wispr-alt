@@ -44,10 +44,10 @@ struct LoginView: View {
 
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("Беловик")
+            Text("А-ГОЛОС")
                 .font(.belovikDisplay(36))
                 .foregroundStyle(BelovikColor.textPrimary)
-            Text("Голосовой интерфейс для работы с текстом")
+            Text("Скажите мысль. Получите текст.")
                 .font(.belovikUI(14))
                 .foregroundStyle(BelovikColor.textSecondary)
         }
@@ -57,7 +57,7 @@ struct LoginView: View {
 
     private var emailStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            card(title: "Вход", body: "Введите email — продолжим в зависимости от того, есть ли у вас пароль.")
+            card(title: "Вход", body: "Email для входа. Продолжим за один шаг.")
 
             TextField("you@example.com", text: $email)
                 .textFieldStyle(.plain)

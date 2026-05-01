@@ -39,7 +39,7 @@ final class KeyboardViewController: UIInputViewController {
         view.backgroundColor = Pal.bg
 
         statusLabel = UILabel()
-        statusLabel.text = "Беловик"
+        statusLabel.text = "А-ГОЛОС"
         statusLabel.textColor = Pal.statusFg
         statusLabel.font = .systemFont(ofSize: 11, weight: .semibold)
         statusLabel.translatesAutoresizingMaskIntoConstraints = false
@@ -203,7 +203,7 @@ final class KeyboardViewController: UIInputViewController {
     private func flashStatus(_ text: String) {
         statusLabel.text = text
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { [weak self] in
-            self?.statusLabel.text = "Беловик"
+            self?.statusLabel.text = "А-ГОЛОС"
         }
     }
 

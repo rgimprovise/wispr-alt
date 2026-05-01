@@ -12,6 +12,13 @@ let snapshotInFlight = false;
 let lastPartial = "";
 let snapshotSeq = 0; // guard against late responses overwriting fresher ones
 
+// Brand voice: status labels are short, in lowercase Russian. See BRAND.md.
+const STATUS_LABEL: Record<RecordingState, string> = {
+  idle: "готов слушать",
+  recording: "слушаю",
+  transcribing: "структурирую",
+};
+
 function setStatus(next: RecordingState, detail?: string) {
   state = next;
   const el = document.querySelector<HTMLDivElement>("#status");
@@ -19,7 +26,8 @@ function setStatus(next: RecordingState, detail?: string) {
     el.className = `status status--${next}`;
     const label = el.querySelector<HTMLSpanElement>(".status__label");
     if (label) {
-      label.textContent = detail ? `${next} · ${detail}` : next;
+      const base = STATUS_LABEL[next];
+      label.textContent = detail ? `${base} · ${detail}` : base;
     }
   }
   updateOverlay(next, lastPartial);

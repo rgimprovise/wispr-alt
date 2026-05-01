@@ -33,10 +33,10 @@ targets:
     info:
       path: wispr-alt/Info.plist
       properties:
-        CFBundleDisplayName: Беловик
-        CFBundleName: Беловик
+        CFBundleDisplayName: А-ГОЛОС
+        CFBundleName: А-ГОЛОС
         UILaunchScreen: {}
-        NSMicrophoneUsageDescription: "Беловик нужен микрофон для записи и транскрипции вашей речи."
+        NSMicrophoneUsageDescription: "А-ГОЛОС использует микрофон для записи и транскрипции вашей речи."
         CFBundleURLTypes:
           - CFBundleURLName: com.wispralt.app
             CFBundleURLSchemes:
@@ -61,7 +61,7 @@ targets:
     info:
       path: wispr-alt-keyboard/Info.plist
       properties:
-        CFBundleDisplayName: Беловик
+        CFBundleDisplayName: А-ГОЛОС
         NSExtension:
           NSExtensionAttributes:
             IsASCIICapable: false

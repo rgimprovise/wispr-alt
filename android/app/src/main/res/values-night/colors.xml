@@ -1,39 +1,65 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Dark variant — keeps in sync with tokens.css [data-theme="dark"]. -->
+<!--
+  А-ГОЛОС palette — single source of truth for Android.
+  Dark-only in v2 (no light variant), see brand/BRAND.md.
+  Keep in sync with app/src/tokens.css and ios/AgolosTokens.swift.
+
+  We keep the original color names where possible (graphite, surface_*,
+  text_*, rec, etc.) so existing Kotlin code (R.color.graphite,
+  R.color.surface_1 …) still resolves — only the values change. New
+  brand colors (signal_red, charcoal, night_blue) are additive.
+-->
 <resources>
-    <color name="paper">#FF131418</color>
-    <color name="paper_soft">#FF181A1F</color>
-    <color name="paper_pure">#FF0E0F12</color>
-    <color name="mint">#FF1A1D22</color>
-    <color name="silver">#FF2C2F35</color>
-    <color name="silver_soft">#FF23252B</color>
+    <!-- Brand base (dark) -->
+    <color name="charcoal">#FF0B0D16</color>
+    <color name="night_blue">#FF11182B</color>
+    <color name="burgundy">#FF3A0D14</color>
 
-    <color name="ink">#FFF0EDE6</color>
-    <color name="graphite">#FFC7CFDD</color>
-    <color name="graphite_soft">#FFA8B0BD</color>
+    <!-- Signal red — main accent -->
+    <color name="signal_red">#FFF22A37</color>
+    <color name="signal_red_deep">#FFB90F1C</color>
 
-    <color name="text_primary">#FFF0EDE6</color>
-    <color name="text_secondary">#FFA8AAB0</color>
-    <color name="text_tertiary">#FF6E7079</color>
-    <color name="text_muted">#FF4A4C53</color>
-    <color name="text_inverse">#FF15171A</color>
+    <!-- Text -->
+    <color name="soft_white">#FFF5F6F8</color>
+    <color name="ui_grey">#FF8A90A2</color>
 
-    <color name="bg_base">#FF131418</color>
-    <color name="surface_1">#FF181A1F</color>
-    <color name="surface_2">#FF1F2128</color>
-    <color name="surface_sunk">#FF0F1014</color>
-    <color name="surface_active">#FF272A32</color>
-    <color name="surface_mint">#FF1A1D22</color>
+    <!-- Legacy aliases (now bound to dark values). Existing Kotlin code
+         keeps working without rewrite. -->
+    <color name="paper">#FF0B0D16</color>
+    <color name="paper_soft">#FF161A24</color>
+    <color name="paper_pure">#FF161A24</color>
+    <color name="mint">#FF1A1F2D</color>
+    <color name="silver">#FF2A3340</color>
+    <color name="silver_soft">#FF1F242F</color>
 
-    <color name="border_subtle">#17FFFFFF</color>
-    <color name="border_strong">#2DFFFFFF</color>
+    <color name="ink">#FFF5F6F8</color>
+    <color name="graphite">#FFF22A37</color>          <!-- was primary text accent → now red CTA -->
+    <color name="graphite_soft">#FFB90F1C</color>
 
-    <color name="rec">#FFC7CFDD</color>
-    <color name="rec_glow">#38C7CFDD</color>
-    <color name="transcribing">#FF8A9DB4</color>
-    <color name="warn">#FFD7A86A</color>
-    <color name="success">#FF8EB089</color>
-    <color name="error">#FFC97474</color>
+    <color name="text_primary">#FFF5F6F8</color>
+    <color name="text_secondary">#FF8A90A2</color>
+    <color name="text_tertiary">#FF5C616E</color>
+    <color name="text_muted">#FF464A58</color>
+    <color name="text_inverse">#FF0B0D16</color>
 
-    <color name="ic_launcher_background">#FF131418</color>
+    <color name="bg_base">#FF0B0D16</color>
+    <color name="surface_1">#FF161A24</color>
+    <color name="surface_2">#FF1C2030</color>
+    <color name="surface_sunk">#FF0B0D16</color>
+    <color name="surface_active">#FF232838</color>
+    <color name="surface_mint">#FF1A1F2D</color>      <!-- subtle blue-lift card bg -->
+
+    <color name="border_subtle">#1AF5F6F8</color>     <!-- 10% white -->
+    <color name="border_strong">#2EF5F6F8</color>     <!-- 18% white -->
+
+    <!-- Semantic — recording state IS red now (action accent) -->
+    <color name="rec">#FFF22A37</color>
+    <color name="rec_glow">#48F22A37</color>          <!-- 28% red -->
+    <color name="transcribing">#FF6E7AAB</color>
+    <color name="warn">#FFD8A86A</color>
+    <color name="success">#FF7AB37D</color>
+    <color name="error">#FFF22A37</color>
+
+    <!-- Launcher icon adaptive background — charcoal so the red А reads -->
+    <color name="ic_launcher_background">#FF0B0D16</color>
 </resources>

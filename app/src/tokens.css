@@ -1,148 +1,157 @@
 /* ============================================================
-   БЕЛОВИК — Design Tokens
-   Голосовой интерфейс для работы с текстом
-   Light-first, графит/чернильный, мягкие радиусы 24–40px
+   А-ГОЛОС — Design Tokens (v2)
+   Голос превращается в рабочий текст.
+   Dark premium tech, signal red accent on action only.
    ============================================================ */
 
-:root,
-[data-theme="light"] {
-  /* === Brand palette (из брендбука) === */
-  --paper:           #F4F1EC;  /* Бумажный белый */
-  --paper-soft:      #F8F6F1;
-  --paper-pure:      #FCFAF6;  /* Чистый белый */
-  --mint:            #ECEFEA;  /* Мятная белизна */
-  --silver:          #D8D6D0;  /* Серебристый */
-  --silver-soft:     #E5E2DB;
+/* --- Inter (display + UI). Self-hosted from brand/fonts/inter/woff2/.
+       Symlinked from /src/assets/fonts during build. ---------- */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/src/assets/fonts/Inter-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/src/assets/fonts/Inter-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/src/assets/fonts/Inter-SemiBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/src/assets/fonts/Inter-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/src/assets/fonts/InterDisplay-Bold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 800;
+  font-display: swap;
+  src: url("/src/assets/fonts/InterDisplay-ExtraBold.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Inter Display";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/src/assets/fonts/InterDisplay-Black.woff2") format("woff2");
+}
 
-  --ink:             #15171A;  /* Чернильный (основной текст) */
-  --graphite:        #1F2733;  /* Графит — глубокий навигационный акцент */
-  --graphite-soft:   #2A3340;
+/* The app is dark-only in v2 — no light/system toggle. */
+:root {
+  /* === Brand palette (BRAND.md) === */
+  --charcoal:        #0B0D16;  /* Угольный чёрный, основная база */
+  --graphite:        #161A24;  /* Глубокий графит, карточки/панели */
+  --night-blue:      #11182B;  /* Ночной синий, premium tech mood */
+  --burgundy:        #3A0D14;  /* Бордовый glow, тёмный красный */
 
-  --text-primary:    #15171A;
-  --text-secondary:  #555A63;
-  --text-tertiary:   #8A8E96;
-  --text-muted:      #B6B5AE;
-  --text-inverse:    #FCFAF6;
+  --signal-red:      #F22A37;  /* Сигнальный красный — главный акцент */
+  --signal-red-deep: #B90F1C;  /* Глубокий красный — hover, тени */
 
-  /* Surfaces */
-  --bg-deepest:      #ECE9E2;
-  --bg-base:         #F4F1EC;
-  --surface-1:       #FCFAF6;
-  --surface-2:       #F0EDE6;
-  --surface-sunk:    #E8E5DD;
-  --surface-active:  #DEDAD0;
-  --surface-mint:    #ECEFEA;
+  --soft-white:      #F5F6F8;  /* Мягкий белый — основной текст */
+  --ui-grey:         #8A90A2;  /* Серый интерфейсный — вторичный текст */
 
-  --divider:         rgba(21, 23, 26, 0.06);
-  --border-subtle:   rgba(21, 23, 26, 0.09);
-  --border-strong:   rgba(21, 23, 26, 0.16);
-  --border-hairline: rgba(21, 23, 26, 0.04);
-  --ring-focus:      rgba(31, 39, 51, 0.32);
+  /* === Semantic tokens (use these in CSS, not raw hex) === */
+  --bg-base:         var(--charcoal);
+  --bg-elevated:     var(--graphite);
+  --bg-night:        var(--night-blue);
+
+  --surface-1:       #161A24;  /* Карточки */
+  --surface-2:       #1C2030;  /* Чуть выше — hover'ы карточек */
+  --surface-sunk:    #0B0D16;  /* Поля ввода / log панели — глубже базового */
+  --surface-active:  #232838;  /* Активная карточка */
+  --surface-glass:   rgba(22, 26, 36, 0.72);  /* Стеклянные панели */
+
+  --text-primary:    var(--soft-white);
+  --text-secondary:  var(--ui-grey);
+  --text-tertiary:   #5C616E;  /* Disabled / hint */
+  --text-inverse:    var(--charcoal);  /* На красном фоне */
+
+  --accent:          var(--signal-red);
+  --accent-deep:     var(--signal-red-deep);
+  --accent-glow:     rgba(242, 42, 55, 0.28);
+
+  --divider:         rgba(245, 246, 248, 0.06);
+  --border-subtle:   rgba(245, 246, 248, 0.10);
+  --border-strong:   rgba(245, 246, 248, 0.18);
+  --border-hairline: rgba(245, 246, 248, 0.04);
+  --border-accent:   rgba(242, 42, 55, 0.40);
+  --ring-focus:      rgba(242, 42, 55, 0.55);
 
   /* Window/chrome */
-  --chrome-bg:       #E8E5DD;
-  --chrome-border:   rgba(21, 23, 26, 0.08);
+  --chrome-bg:       #0B0D16;
+  --chrome-border:   rgba(245, 246, 248, 0.07);
 
-  /* Semantic states (no red accents per brandbook) */
-  --rec:             #1F2733;          /* recording = графит, не красный */
-  --rec-glow:        rgba(31, 39, 51, 0.18);
-  --transcribing:    #6B7A8F;          /* мягкий навигационный/мятный */
-  --transcribing-glow: rgba(107, 122, 143, 0.22);
-  --warn:            #B5803A;          /* тёплая охра вместо amber */
-  --success:         #5C7A5A;          /* приглушённый мятно-зелёный */
-  --error:           #8E3A3A;          /* приглушённый кирпич */
-  --info:            #4A6585;
+  /* Semantic states */
+  --rec:             var(--signal-red);
+  --rec-glow:        var(--accent-glow);
+  --transcribing:    #6E7AAB;       /* Ночной-синий лёгкий */
+  --transcribing-glow: rgba(110, 122, 171, 0.32);
+  --warn:            #D8A86A;       /* Тёплый янтарь — заметен на тёмном */
+  --success:         #7AB37D;       /* Спокойный зелёный */
+  --error:           var(--signal-red);
+  --info:            #6E92C2;
 
-  --shadow-sm: 0 1px 2px rgba(21,23,26,0.04), 0 1px 1px rgba(21,23,26,0.03);
-  --shadow-md: 0 6px 18px rgba(21,23,26,0.06), 0 1px 3px rgba(21,23,26,0.04);
-  --shadow-lg: 0 28px 72px rgba(21,23,26,0.10), 0 6px 20px rgba(21,23,26,0.05);
-  --shadow-overlay: 0 22px 60px rgba(21,23,26,0.16), 0 4px 14px rgba(21,23,26,0.08);
-}
-
-[data-theme="dark"] {
-  --paper:           #131418;
-  --paper-soft:      #181A1F;
-  --paper-pure:      #0E0F12;
-  --mint:            #1A1D22;
-  --silver:          #2C2F35;
-  --silver-soft:     #23252B;
-
-  --ink:             #F0EDE6;
-  --graphite:        #C7CFDD;
-  --graphite-soft:   #A8B0BD;
-
-  --text-primary:    #F0EDE6;
-  --text-secondary:  #A8AAB0;
-  --text-tertiary:   #6E7079;
-  --text-muted:      #4A4C53;
-  --text-inverse:    #15171A;
-
-  --bg-deepest:      #0B0C0F;
-  --bg-base:         #131418;
-  --surface-1:       #181A1F;
-  --surface-2:       #1F2128;
-  --surface-sunk:    #0F1014;
-  --surface-active:  #272A32;
-  --surface-mint:    #1A1D22;
-
-  --divider:         rgba(255, 255, 255, 0.06);
-  --border-subtle:   rgba(255, 255, 255, 0.09);
-  --border-strong:   rgba(255, 255, 255, 0.18);
-  --border-hairline: rgba(255, 255, 255, 0.04);
-  --ring-focus:      rgba(199, 207, 221, 0.40);
-
-  --chrome-bg:       #181A1F;
-  --chrome-border:   rgba(255, 255, 255, 0.07);
-
-  --rec:             #C7CFDD;
-  --rec-glow:        rgba(199, 207, 221, 0.22);
-  --transcribing:    #8A9DB4;
-  --transcribing-glow: rgba(138, 157, 180, 0.28);
-  --warn:            #D7A86A;
-  --success:         #8EB089;
-  --error:           #C97474;
-  --info:            #7B9AC2;
-
+  /* Shadows — глубокие, на тёмном фоне */
   --shadow-sm: 0 1px 2px rgba(0,0,0,0.40);
-  --shadow-md: 0 6px 18px rgba(0,0,0,0.45);
-  --shadow-lg: 0 28px 72px rgba(0,0,0,0.55), 0 6px 20px rgba(0,0,0,0.30);
+  --shadow-md: 0 4px 14px rgba(0,0,0,0.45), 0 1px 3px rgba(0,0,0,0.30);
+  --shadow-lg: 0 24px 60px rgba(0,0,0,0.55), 0 6px 20px rgba(0,0,0,0.30);
   --shadow-overlay: 0 22px 60px rgba(0,0,0,0.65), 0 4px 14px rgba(0,0,0,0.40);
-}
+  --shadow-glow:   0 0 24px var(--accent-glow);
+  --shadow-glow-strong: 0 0 36px rgba(242, 42, 55, 0.45);
 
-:root {
   /* Spacing — 4-based */
-  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px;
+  --sp-1: 4px;  --sp-2: 8px;  --sp-3: 12px; --sp-4: 16px;
   --sp-5: 20px; --sp-6: 24px; --sp-8: 32px; --sp-10: 40px;
   --sp-12: 48px; --sp-16: 64px; --sp-20: 80px;
 
-  /* Radii — мягкие, по брендбуку 24–40px на крупных */
+  /* Radii — premium tech: 16-24px на больших, 14 на кнопках */
   --r-xs:   4px;
   --r-sm:   8px;
-  --r-md:   12px;
+  --r-md:   14px;
   --r-lg:   16px;
   --r-xl:   20px;
   --r-2xl:  24px;
   --r-3xl:  32px;
-  --r-4xl:  40px;
   --r-pill: 9999px;
 
-  /* Motion — спокойно, плавно */
+  /* Motion */
   --ease-out:   cubic-bezier(0.25, 0.46, 0.45, 0.94);
   --ease-spring: cubic-bezier(0.34, 1.20, 0.64, 1);
-  --d-quick:  200ms;
-  --d-base:   260ms;
-  --d-slow:   360ms;
+  --d-quick:  180ms;
+  --d-base:   240ms;
+  --d-slow:   320ms;
   --d-overlay: 280ms;
 
   /* Typography
-     Display — Fraunces скруглён вместо несвободного Intro Friday
-     UI/text — Manrope (geometric sans) вместо Geometria
-     Mono — JetBrains Mono */
-  --font-display: "Fraunces", "Times New Roman", "Noto Serif", Georgia, serif;
-  --font-ui:      "Manrope", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
-  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace;
+     Display — Inter Display Black/ExtraBold (replaces Druk Wide).
+     UI/text — Inter (regular/medium/semibold).
+     Mono — system. */
+  --font-display: "Inter Display", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
+  --font-ui:      "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono:    ui-monospace, "SF Mono", Menlo, "Cascadia Mono", Consolas, monospace;
 }
 
+/* === Base === */
 html, body {
   margin: 0;
   padding: 0;
@@ -153,29 +162,45 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Signature ambient gradient — soft red glow top-left, fades into night.
+   Apply to the main app container as a background layer. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 50% at 0% 0%, rgba(185, 15, 28, 0.18) 0%, transparent 60%),
+    radial-gradient(ellipse 80% 60% at 100% 100%, rgba(17, 24, 43, 0.6) 0%, transparent 60%);
+  z-index: 0;
+}
+body > * { position: relative; z-index: 1; }
+
 * { box-sizing: border-box; }
 
-/* === Type roles === */
-.t-display-xl { font-family: var(--font-display); font-size: 64px; line-height: 0.95; font-weight: 500; letter-spacing: -1.6px; font-variation-settings: "opsz" 144, "SOFT" 100; }
-.t-display-lg { font-family: var(--font-display); font-size: 44px; line-height: 1.02; font-weight: 500; letter-spacing: -1.0px; font-variation-settings: "opsz" 144, "SOFT" 100; }
-.t-display    { font-family: var(--font-display); font-size: 30px; line-height: 1.08; font-weight: 500; letter-spacing: -0.5px; font-variation-settings: "opsz" 144, "SOFT" 100; }
-.t-h1         { font-family: var(--font-display); font-size: 24px; line-height: 1.15; font-weight: 500; letter-spacing: -0.3px; font-variation-settings: "opsz" 144, "SOFT" 100; }
-.t-h2         { font-family: var(--font-ui); font-size: 18px; line-height: 1.35; font-weight: 600; letter-spacing: -0.2px; }
-.t-h3         { font-family: var(--font-ui); font-size: 15px; line-height: 1.40; font-weight: 600; letter-spacing: -0.1px; }
-.t-body       { font-family: var(--font-ui); font-size: 14px; line-height: 1.50; font-weight: 400; }
-.t-body-md    { font-family: var(--font-ui); font-size: 13px; line-height: 1.45; font-weight: 400; }
-.t-label      { font-family: var(--font-ui); font-size: 12px; line-height: 1.30; font-weight: 600; letter-spacing: 0; }
-.t-caption    { font-family: var(--font-ui); font-size: 11px; line-height: 1.30; font-weight: 500; letter-spacing: 0.6px; color: var(--text-tertiary); text-transform: uppercase; }
-.t-mono       { font-family: var(--font-mono); font-size: 12px; line-height: 1.50; font-weight: 500; letter-spacing: -0.2px; }
+/* === Type roles ===
+   Display = Inter Display Black/ExtraBold for hero & headlines.
+   UI/body = Inter Regular/Medium/SemiBold. */
+.t-display-xl { font-family: var(--font-display); font-size: 56px; line-height: 1.0;  font-weight: 900; letter-spacing: -1.6px; }
+.t-display-lg { font-family: var(--font-display); font-size: 42px; line-height: 1.05; font-weight: 900; letter-spacing: -1.0px; }
+.t-display    { font-family: var(--font-display); font-size: 32px; line-height: 1.08; font-weight: 800; letter-spacing: -0.6px; }
+.t-h1         { font-family: var(--font-display); font-size: 26px; line-height: 1.18; font-weight: 800; letter-spacing: -0.4px; }
+.t-h2         { font-family: var(--font-ui);      font-size: 18px; line-height: 1.35; font-weight: 700; letter-spacing: -0.2px; }
+.t-h3         { font-family: var(--font-ui);      font-size: 15px; line-height: 1.40; font-weight: 600; letter-spacing: -0.1px; }
+.t-body       { font-family: var(--font-ui);      font-size: 14px; line-height: 1.50; font-weight: 400; }
+.t-body-md    { font-family: var(--font-ui);      font-size: 13px; line-height: 1.45; font-weight: 400; }
+.t-label      { font-family: var(--font-ui);      font-size: 12px; line-height: 1.30; font-weight: 600; letter-spacing: 0; }
+.t-caption    { font-family: var(--font-ui);      font-size: 11px; line-height: 1.30; font-weight: 500; letter-spacing: 0.8px; color: var(--text-secondary); text-transform: uppercase; }
+.t-mono       { font-family: var(--font-mono);    font-size: 12px; line-height: 1.50; font-weight: 500; letter-spacing: -0.2px; }
 
-/* === Focus === */
+/* === Focus — red ring per brand === */
 :focus-visible {
-  outline: 2px solid var(--graphite);
+  outline: 2px solid var(--accent);
   outline-offset: 2px;
   border-radius: 6px;
 }
 
-/* === Scrollbars === */
+/* === Scrollbars (dark) === */
 *::-webkit-scrollbar { width: 10px; height: 10px; }
 *::-webkit-scrollbar-track { background: transparent; }
 *::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 999px; border: 2px solid transparent; background-clip: padding-box; }
@@ -183,11 +208,11 @@ html, body {
 
 /* === Motion keyframes === */
 @keyframes b-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 var(--rec-glow); }
-  50%      { box-shadow: 0 0 0 8px transparent; }
+  0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+  50%      { box-shadow: 0 0 0 10px transparent; }
 }
 @keyframes b-dot {
-  0%, 100% { opacity: 1;   transform: scale(1); }
+  0%, 100% { opacity: 1;    transform: scale(1); }
   50%      { opacity: 0.55; transform: scale(0.85); }
 }
 @keyframes vu-bar {
@@ -213,23 +238,21 @@ html, body {
   }
 }
 
-/* === Utility: глянцевая стеклянная подложка для overlay === */
-.glass-light {
-  background: linear-gradient(180deg, rgba(255,255,255,0.96) 0%, rgba(248,246,241,0.92) 100%);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 0.5px solid rgba(21, 23, 26, 0.08);
-  box-shadow:
-    var(--shadow-overlay),
-    inset 0 1px 0 rgba(255, 255, 255, 0.7);
-}
+/* === Utility: stained-glass dark panel === */
 .glass-dark {
-  background: linear-gradient(180deg, rgba(24,26,31,0.92) 0%, rgba(15,16,20,0.94) 100%);
-  backdrop-filter: blur(28px) saturate(160%);
-  -webkit-backdrop-filter: blur(28px) saturate(160%);
-  border: 0.5px solid rgba(255, 255, 255, 0.10);
-  box-shadow:
-    var(--shadow-overlay),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
-  color: var(--text-inverse);
+  background: linear-gradient(180deg, rgba(28, 32, 48, 0.78) 0%, rgba(11, 13, 22, 0.86) 100%);
+  backdrop-filter: blur(28px) saturate(140%);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  border: 1px solid rgba(245, 246, 248, 0.08);
+  box-shadow: var(--shadow-overlay), inset 0 1px 0 rgba(245, 246, 248, 0.06);
+  color: var(--text-primary);
+}
+
+/* Subtle background grid — sparse, not loud. Brandbook calls for тонкая
+   едва заметная сетка, dark grey, 24px modules. Toggled per surface. */
+.bg-grid {
+  background-image:
+    linear-gradient(rgba(245, 246, 248, 0.025) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(245, 246, 248, 0.025) 1px, transparent 1px);
+  background-size: 24px 24px;
 }

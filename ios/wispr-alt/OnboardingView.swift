@@ -14,12 +14,12 @@ struct OnboardingView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
-                    Text("Беловик")
+                    Text("А-ГОЛОС")
                         .font(.belovikDisplay(40))
                         .foregroundStyle(BelovikColor.textPrimary)
                         .padding(.top, 24)
 
-                    Text("Голосовой интерфейс для работы с текстом")
+                    Text("Скажите мысль. Получите текст.")
                         .font(.belovikUI(15))
                         .foregroundStyle(BelovikColor.textSecondary)
 
@@ -41,7 +41,7 @@ struct OnboardingView: View {
                     stepCard(
                         index: 2,
                         title: "Включить клавиатуру в настройках",
-                        body: "Settings → General → Keyboard → Keyboards → Add New Keyboard… → Беловик",
+                        body: "Settings → General → Keyboard → Keyboards → Add New Keyboard… → А-ГОЛОС",
                         done: false,
                         cta: "Открыть настройки",
                         action: openSettings
@@ -50,7 +50,7 @@ struct OnboardingView: View {
                     stepCard(
                         index: 3,
                         title: "Включить Allow Full Access",
-                        body: "В том же экране тапните по клавиатуре «Беловик» и включите Allow Full Access — это нужно для сетевых запросов и микрофона.",
+                        body: "В том же экране тапните по клавиатуре «А-ГОЛОС» и включите Allow Full Access — это нужно для сетевых запросов и микрофона.",
                         done: false,
                         cta: "Открыть настройки",
                         action: openSettings

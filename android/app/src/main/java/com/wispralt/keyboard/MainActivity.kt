@@ -186,9 +186,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderWelcome(c: LinearLayout) {
-        c.addView(displayHeadline("Беловик"))
+        c.addView(displayHeadline("А-ГОЛОС"))
         c.addView(spacer(dp(8)))
-        c.addView(subtext("Голосовой интерфейс для работы с текстом"))
+        c.addView(subtext("Скажите мысль. Получите текст."))
         c.addView(spacer(dp(40)))
         c.addView(card(
             title = "Говорите свободно — получайте чистый текст",
@@ -243,13 +243,13 @@ class MainActivity : AppCompatActivity() {
     private fun renderAccessibilityStep(c: LinearLayout) {
         c.addView(displayHeadline("Спец. возможности"))
         c.addView(spacer(dp(16)))
-        c.addView(subtext("Беловик использует API специальных возможностей чтобы вставлять распознанный текст в активное поле."))
+        c.addView(subtext("А-ГОЛОС использует API специальных возможностей чтобы вставлять распознанный текст в активное поле."))
         c.addView(spacer(dp(20)))
 
         c.addView(card(
             title = "Что мы делаем с этим разрешением",
             body = """
-                Беловик использует доступ к содержимому экрана, чтобы вставить распознанный голос в текущее текстовое поле — точно туда, где вы поставили курсор.
+                А-ГОЛОС использует доступ к содержимому экрана, чтобы вставить распознанный голос в текущее текстовое поле — точно туда, где вы поставили курсор.
 
                 Что мы НЕ делаем:
                 • Не читаем содержимое полей паролей и кредитных карт
@@ -265,7 +265,7 @@ class MainActivity : AppCompatActivity() {
             title = "После открытия настроек",
             body = """
                 1. Найдите раздел «Скачанные приложения»
-                2. Тапните по «Беловик»
+                2. Тапните по «А-ГОЛОС»
                 3. Включите главный тумблер
                 4. Не включайте «Быстрый запуск функции» (shortcut) — он не нужен
                 5. Вернитесь в приложение
@@ -286,7 +286,7 @@ class MainActivity : AppCompatActivity() {
     private fun renderNotificationsStep(c: LinearLayout) {
         c.addView(displayHeadline("Уведомления"))
         c.addView(spacer(dp(16)))
-        c.addView(subtext("Уведомление в шторке показывает что Беловик активен и даёт быстрый доступ к диктовке. Без него тоже всё работает."))
+        c.addView(subtext("Уведомление в шторке показывает что А-ГОЛОС активен и даёт быстрый доступ к диктовке. Без него тоже всё работает."))
         c.addView(spacer(dp(32)))
         if (hasNotifications()) {
             c.addView(grantedRow("Уведомления разрешены"))
@@ -306,7 +306,7 @@ class MainActivity : AppCompatActivity() {
         c.addView(spacer(dp(20)))
         c.addView(subtext("Откройте Telegram, заметки или любое приложение с текстовым полем. Тапните в поле — появится кнопка-микрофон. Удержание = быстрая диктовка."))
         c.addView(spacer(dp(32)))
-        c.addView(primaryButton("Включить Беловик") {
+        c.addView(primaryButton("Включить А-ГОЛОС") {
             OnboardingState.markCompleted(this)
             if (allRequiredPermissionsGranted()) {
                 WisprService.start(this)
@@ -331,9 +331,9 @@ class MainActivity : AppCompatActivity() {
         val c = container()
         c.removeAllViews()
 
-        c.addView(displayHeadline("Беловик"))
+        c.addView(displayHeadline("А-ГОЛОС"))
         c.addView(spacer(dp(4)))
-        c.addView(subtext("Голосовой интерфейс для работы с текстом"))
+        c.addView(subtext("Скажите мысль. Получите текст."))
         c.addView(spacer(dp(28)))
 
         val running = WisprService.instance != null
@@ -360,7 +360,7 @@ class MainActivity : AppCompatActivity() {
         ) { openOverlaySettings() })
         if (!hasA11y()) c.addView(gateBanner(
             "Спец. возможности выключены",
-            "Без них Беловик не сможет вставить распознанный текст в активное поле.",
+            "Без них А-ГОЛОС не сможет вставить распознанный текст в активное поле.",
             "Открыть настройки",
         ) { openAccessibilitySettings() })
 
@@ -404,7 +404,7 @@ class MainActivity : AppCompatActivity() {
         })
         card.addView(spacer(dp(6)))
         card.addView(TextView(this).apply {
-            text = if (running) "Беловик работает в фоне. Тапните в любое текстовое поле — появится кнопка."
+            text = if (running) "А-ГОЛОС работает в фоне. Тапните в любое текстовое поле — появится кнопка."
             else "Запустите фоновый сервис чтобы кнопка появлялась автоматически."
             setTextColor(col(R.color.text_secondary))
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)

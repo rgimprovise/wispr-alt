@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">wispr-alt</string>
-    <string name="accessibility_service_description">wispr-alt вставляет распознанный голосом текст в поле ввода активного приложения после того как вы продиктовали фразу.</string>
-    <string name="notification_channel_name">wispr-alt running</string>
-    <string name="notification_channel_desc">Постоянное уведомление пока wispr-alt активен</string>
+    <string name="app_name">А-ГОЛОС</string>
+    <string name="accessibility_service_description">А-ГОЛОС вставляет распознанный голосом текст в активное поле ввода после того, как вы продиктовали фразу.</string>
+    <string name="notification_channel_name">А-ГОЛОС активен</string>
+    <string name="notification_channel_desc">Уведомление, пока сервис работает в фоне</string>
 </resources>

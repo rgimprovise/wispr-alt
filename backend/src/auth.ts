@@ -130,18 +130,26 @@ auth.get("/verify-link", async (c) => {
     `belovik://auth?token=${encodeURIComponent(jwt)}` +
     `&email=${encodeURIComponent(user.email)}`;
   return c.html(`<!doctype html>
-<html><head><meta charset="utf-8"><title>Беловик — вход</title>
+<html><head><meta charset="utf-8"><title>А-ГОЛОС — вход</title>
 <meta http-equiv="refresh" content="0; url=${deepLink}">
 <style>
-  body{font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:#F4F1EC;color:#15171A;padding:48px 16px;text-align:center;}
-  .card{max-width:480px;margin:0 auto;background:#FCFAF6;border-radius:16px;padding:32px;border:1px solid rgba(21,23,26,.06);}
-  code{display:block;word-break:break-all;font-family:ui-monospace,Menlo,monospace;background:#ECEFEA;border-radius:12px;padding:16px;font-size:12px;margin-top:16px;}
+  body{font-family:-apple-system,'Inter',Segoe UI,Roboto,sans-serif;background:#0B0D16;color:#F5F6F8;padding:48px 16px;text-align:center;margin:0;min-height:100vh;}
+  .badge{display:inline-block;font-size:11px;font-weight:600;letter-spacing:1.2px;color:#F22A37;text-transform:uppercase;margin-bottom:16px;}
+  .card{max-width:480px;margin:0 auto;background:#161A24;border-radius:20px;padding:32px;border:1px solid rgba(245,246,248,0.08);box-shadow:0 4px 24px rgba(0,0,0,0.4);text-align:left;}
+  h1{font-size:22px;font-weight:800;margin:0 0 16px 0;letter-spacing:-0.3px;}
+  p{color:#8A90A2;font-size:14px;line-height:1.55;}
+  code{display:block;word-break:break-all;font-family:ui-monospace,Menlo,monospace;background:#0B0D16;border:1px solid rgba(245,246,248,0.08);border-radius:14px;padding:16px;font-size:12px;margin-top:16px;color:#F5F6F8;}
+  .tagline{margin-top:24px;font-size:11px;color:#5C616E;letter-spacing:0.4px;}
 </style></head>
-<body><div class="card">
-  <h1>Открываем Беловик…</h1>
-  <p>Если приложение не открылось автоматически, скопируйте токен и вставьте его в окно входа:</p>
-  <code>${jwt}</code>
-</div></body></html>`);
+<body>
+  <div class="badge">А-ГОЛОС</div>
+  <div class="card">
+    <h1>Открываем приложение…</h1>
+    <p>Если приложение не открылось автоматически, скопируйте токен и вставьте его в окно входа.</p>
+    <code>${jwt}</code>
+  </div>
+  <div class="tagline">Скажите мысль. Получите текст.</div>
+</body></html>`);
 });
 
 // POST /auth/check-email — body: { email }

@@ -1,17 +1,12 @@
 <!doctype html>
-<html lang="ru" data-theme="light">
+<html lang="ru">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Беловик</title>
+    <title>А-ГОЛОС</title>
 
-    <!-- Belovik typography: Manrope (UI) + Fraunces (display) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Fraunces:opsz,wght,SOFT@9..144,400..700,0..100&family=JetBrains+Mono:wght@400;500;600&display=swap"
-    />
+    <!-- Inter Display + Inter, self-hosted from /src/assets/fonts/ — no
+         remote Google Fonts. See tokens.css for @font-face declarations. -->
 
     <link rel="stylesheet" href="/src/tokens.css" />
     <link rel="stylesheet" href="/src/styles.css" />
@@ -23,14 +18,14 @@
       <header class="brand">
         <div class="brand__mark" aria-hidden="true"></div>
         <div class="brand__lockup">
-          <div class="t-h1">Беловик</div>
-          <div class="t-caption">Голосовой интерфейс для работы с текстом</div>
+          <div class="t-h1">А-ГОЛОС</div>
+          <div class="t-caption">Скажите мысль. Получите текст.</div>
         </div>
       </header>
 
       <section class="auth" id="auth-step-email">
         <h2 class="t-h2">Вход</h2>
-        <p class="hint">Введите email — продолжим в зависимости от того, есть ли у вас пароль.</p>
+        <p class="hint">Email для входа. Продолжим за один шаг.</p>
         <form id="auth-email-form" class="auth__form">
           <input
             type="email"
@@ -106,8 +101,8 @@
       <header class="brand">
         <div class="brand__mark" aria-hidden="true"></div>
         <div class="brand__lockup">
-          <div class="t-h1">Беловик</div>
-          <div class="t-caption">Голосовой интерфейс для работы с текстом</div>
+          <div class="t-h1">А-ГОЛОС</div>
+          <div class="t-caption">Скажите мысль. Получите текст.</div>
         </div>
       </header>
 
@@ -116,7 +111,7 @@
       <aside id="set-password-banner" class="banner" hidden>
         <div class="banner__text">
           <strong>Установите пароль</strong>
-          <span>В следующий раз войдёте без кода из почты.</span>
+          <span>Для быстрого входа без писем.</span>
         </div>
         <div class="banner__actions">
           <button type="button" id="banner-set-password" class="btn btn--primary btn--small">
@@ -129,12 +124,12 @@
       </aside>
 
       <p class="hint">
-        Нажмите <kbd class="kcap" id="hotkey-hint">F5</kbd> в любом приложении для записи.
+        <kbd class="kcap" id="hotkey-hint">F5</kbd> — запись в любом приложении.
       </p>
 
       <div id="status" class="status status--idle">
         <span class="status__dot"></span>
-        <span class="status__label">готов</span>
+        <span class="status__label">готов слушать</span>
       </div>
 
       <section class="settings">

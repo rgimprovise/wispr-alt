@@ -100,14 +100,14 @@ class LoginActivity : AppCompatActivity() {
 
     private fun renderEmailStep() {
         root.removeAllViews()
-        root.addView(displayHeadline("Беловик"))
+        root.addView(displayHeadline("А-ГОЛОС"))
         root.addView(spacer(dp(8)))
-        root.addView(subtext("Голосовой интерфейс для работы с текстом"))
+        root.addView(subtext("Скажите мысль. Получите текст."))
         root.addView(spacer(dp(48)))
 
         root.addView(card(
             title = "Вход",
-            body = "Введите email — продолжим в зависимости от того, есть ли у вас пароль.",
+            body = "Email для входа. Продолжим за один шаг.",
         ))
         root.addView(spacer(dp(20)))
 

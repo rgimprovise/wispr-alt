@@ -1,10 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  А-ГОЛОС dark theme. v2 is dark-only — DayNight stays as a parent for
+  Material defaults, but our colors force dark in both modes via
+  values/ + values-night/ matching.
+-->
 <resources>
     <style name="Theme.WisprAlt" parent="Theme.Material3.DayNight.NoActionBar">
-        <item name="colorPrimary">@color/graphite</item>
+        <item name="colorPrimary">@color/signal_red</item>
         <item name="colorOnPrimary">@color/text_inverse</item>
+        <item name="colorSecondary">@color/ui_grey</item>
+        <item name="colorOnSecondary">@color/text_primary</item>
         <item name="android:windowBackground">@color/bg_base</item>
         <item name="android:statusBarColor">@color/bg_base</item>
+        <item name="android:navigationBarColor">@color/bg_base</item>
         <item name="android:windowLightStatusBar">false</item>
+        <item name="android:textColorPrimary">@color/text_primary</item>
+        <item name="android:textColorSecondary">@color/text_secondary</item>
     </style>
 </resources>

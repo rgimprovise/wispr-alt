@@ -61,6 +61,34 @@ pub fn load(app: &AppHandle) -> Settings {
     }
 }
 
+/// One-shot migration of the auth session from plaintext settings.json
+/// (v0.3.0 storage) to the OS keychain (v0.3.3+). Idempotent: when the
+/// fields are already absent from settings.json this is a no-op.
+///
+/// Called once on app start. Failure to write to the keychain is logged
+/// but doesn't drop the user's session — they stay signed in via the
+/// settings.json values until next launch (where we retry).
+pub fn migrate_auth_to_keychain(app: &AppHandle) {
+    let mut current = load(app);
+    let token = current.auth_token.take();
+    let email = current.auth_email.take();
+    let Some(token) = token else { return };
+    let Some(email) = email else { return };
+    match crate::keystore::save(&token, &email) {
+        Ok(()) => {
+            // Strip from disk only after the keychain accepted the value.
+            // If save() above failed, we leave the plaintext in place so
+            // the user stays signed in and we can retry next launch.
+            if let Err(e) = save(app, &current) {
+                eprintln!("[settings] migration: failed to strip plaintext: {e}");
+            } else {
+                eprintln!("[settings] migrated auth session to OS keychain");
+            }
+        }
+        Err(e) => eprintln!("[settings] keychain write failed during migration: {e}"),
+    }
+}
+
 pub fn save(app: &AppHandle, settings: &Settings) -> Result<(), String> {
     let path = settings_path(app)?;
     if let Some(parent) = path.parent() {

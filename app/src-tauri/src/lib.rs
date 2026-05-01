@@ -1,5 +1,6 @@
 mod audio;
 mod inject;
+mod keystore;
 mod perms;
 mod settings;
 
@@ -103,38 +104,38 @@ fn get_style(app: tauri::AppHandle) -> String {
 
 /// Returns the stored JWT (or null if not signed in). Frontend reads this
 /// once on startup and attaches it as `Authorization: Bearer …` to every
-/// /transcribe request.
+/// /transcribe request. Backed by the OS keychain (v0.3.3+).
 #[tauri::command]
-fn get_auth_token(app: tauri::AppHandle) -> Option<String> {
-    settings::load(&app).auth_token
+fn get_auth_token(_app: tauri::AppHandle) -> Option<String> {
+    keystore::get_token().unwrap_or_else(|e| {
+        eprintln!("[auth] {e}");
+        None
+    })
 }
 
 /// Returns the email of the signed-in user (for the "logged in as" UI).
 #[tauri::command]
-fn get_auth_email(app: tauri::AppHandle) -> Option<String> {
-    settings::load(&app).auth_email
+fn get_auth_email(_app: tauri::AppHandle) -> Option<String> {
+    keystore::get_email().unwrap_or_else(|e| {
+        eprintln!("[auth] {e}");
+        None
+    })
 }
 
 #[tauri::command]
 fn set_auth_session(
-    app: tauri::AppHandle,
+    _app: tauri::AppHandle,
     token: String,
     email: String,
 ) -> Result<(), String> {
-    let mut current = settings::load(&app);
-    current.auth_token = Some(token);
-    current.auth_email = Some(email);
-    settings::save(&app, &current)?;
+    keystore::save(&token, &email)?;
     eprintln!("[auth] session stored");
     Ok(())
 }
 
 #[tauri::command]
-fn clear_auth_session(app: tauri::AppHandle) -> Result<(), String> {
-    let mut current = settings::load(&app);
-    current.auth_token = None;
-    current.auth_email = None;
-    settings::save(&app, &current)?;
+fn clear_auth_session(_app: tauri::AppHandle) -> Result<(), String> {
+    keystore::clear()?;
     eprintln!("[auth] session cleared");
     Ok(())
 }
@@ -277,6 +278,11 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // One-shot migration of v0.3.0 plaintext tokens (settings.json)
+            // into the OS keychain. Idempotent for fresh installs and
+            // post-migration launches.
+            settings::migrate_auth_to_keychain(&app.handle());
+
             // Register the belovik:// scheme at runtime. Bundled releases
             // get this through Info.plist / WiX / .desktop files generated
             // by tauri build, but dev mode (`bun tauri dev`) needs explicit
@@ -309,13 +315,10 @@ pub fn run() {
                     }
                     let Some(token) = token else { continue };
                     let final_email = email
-                        .or_else(|| settings::load(&app_for_dl).auth_email)
+                        .or_else(|| keystore::get_email().ok().flatten())
                         .unwrap_or_default();
-                    let mut current = settings::load(&app_for_dl);
-                    current.auth_token = Some(token.clone());
-                    current.auth_email = Some(final_email.clone());
-                    if let Err(e) = settings::save(&app_for_dl, &current) {
-                        eprintln!("[deep-link] settings save failed: {e}");
+                    if let Err(e) = keystore::save(&token, &final_email) {
+                        eprintln!("[deep-link] keystore save failed: {e}");
                         continue;
                     }
                     let _ = app_for_dl.emit(

@@ -1,6 +1,6 @@
 [package]
 name = "app"
-version = "0.3.2"
+version = "0.3.3"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -25,6 +25,12 @@ tauri-plugin-global-shortcut = "2"
 # routes the URL to the already-running app instead of spawning duplicates.
 tauri-plugin-deep-link = "2"
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
+# OS-native secret storage: macOS Keychain / Windows Credential Manager /
+# Linux Secret Service. Holds the JWT so settings.json stays plaintext-
+# friendly while credentials live behind the OS access-control prompt.
+# `apple-native` and `windows-native` use built-in OS APIs (no DBus dep on
+# Linux means we ship `sync-secret-service` there).
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 cpal = "0.15"

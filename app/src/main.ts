@@ -131,43 +131,63 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   // Updating the overlay on each event makes the wall-clock identical
   // but the perceived latency much shorter — text starts streaming in
   // immediately after stop instead of going dark for 4-6s.
-  const res = await authedFetch("/transcribe?stream=1", {
-    method: "POST",
-    body: form,
-  });
-  if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  if (!res.body) throw new Error("no response body");
-
-  const reader = res.body.getReader();
-  const dec = new TextDecoder();
-  let buf = "";
+  //
+  // Hard 60s timeout via AbortController guards against backend hangs
+  // (cleanup model returning nothing for very long inputs etc.) — we'd
+  // rather fall back to whatever raw transcript we already received
+  // than leave the overlay stuck on "transcribing" forever.
+  const ac = new AbortController();
+  const timeout = setTimeout(() => ac.abort(), 60_000);
   let raw = "";
   let clean = "";
-  while (true) {
-    const { value, done } = await reader.read();
-    if (done) break;
-    buf += dec.decode(value, { stream: true });
-    let idx: number;
-    while ((idx = buf.indexOf("\n")) >= 0) {
-      const line = buf.slice(0, idx).trim();
-      buf = buf.slice(idx + 1);
-      if (!line) continue;
-      let ev: { type: string; text?: string; message?: string };
-      try { ev = JSON.parse(line); } catch { continue; }
-      if (ev.type === "raw") {
-        raw = ev.text ?? "";
-        // Show raw text as soon as transcription finishes so the user
-        // sees something immediately. Cleanup deltas will overwrite.
-        updateOverlay("transcribing", raw);
-      } else if (ev.type === "delta") {
-        clean += ev.text ?? "";
-        updateOverlay("transcribing", clean);
-      } else if (ev.type === "done") {
-        clean = (ev.text ?? clean).trim();
-      } else if (ev.type === "error") {
-        throw new Error(ev.message ?? "transcribe error");
+  try {
+    const res = await authedFetch("/transcribe?stream=1", {
+      method: "POST",
+      body: form,
+      signal: ac.signal,
+    });
+    if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
+    if (!res.body) throw new Error("no response body");
+
+    const reader = res.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      let idx: number;
+      while ((idx = buf.indexOf("\n")) >= 0) {
+        const line = buf.slice(0, idx).trim();
+        buf = buf.slice(idx + 1);
+        if (!line) continue;
+        let ev: { type: string; text?: string; message?: string };
+        try { ev = JSON.parse(line); } catch { continue; }
+        if (ev.type === "raw") {
+          raw = ev.text ?? "";
+          // Show raw text as soon as transcription finishes so the user
+          // sees something immediately. Cleanup deltas will overwrite.
+          updateOverlay("transcribing", raw);
+        } else if (ev.type === "delta") {
+          clean += ev.text ?? "";
+          updateOverlay("transcribing", clean);
+        } else if (ev.type === "done") {
+          clean = (ev.text ?? clean).trim();
+        } else if (ev.type === "error") {
+          throw new Error(ev.message ?? "transcribe error");
+        }
       }
     }
+  } catch (err) {
+    // Timeout / network drop → use whatever we accumulated. Better to
+    // paste raw than to leave the user staring at a frozen overlay.
+    if ((err as any)?.name === "AbortError") {
+      log("transcribe stream timeout — falling back to raw");
+    } else {
+      log(`transcribe stream error: ${err}`);
+    }
+  } finally {
+    clearTimeout(timeout);
   }
   return clean.trim() || raw.trim();
 }

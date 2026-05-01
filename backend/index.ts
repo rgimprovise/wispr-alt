@@ -18,7 +18,7 @@ const app = new Hono();
 app.use("/*", cors({ origin: "*" })); // tighten in prod
 
 app.get("/", (c) =>
-  c.json({ ok: true, service: "agolos", version: "2.0.0-alpha.1" })
+  c.json({ ok: true, service: "agolos", version: "2.0.0-alpha.2" })
 );
 
 app.route("/auth", auth);

@@ -37,6 +37,25 @@ export interface TranscribeResult {
 const TRANSCRIBE_MODEL = "gpt-4o-mini-transcribe";
 const LLM_MODEL = "gpt-5-nano";
 
+/**
+ * Adaptive output budget for the cleanup model.
+ *
+ * gpt-5-nano is a reasoning model — it spends part of `max_completion_tokens`
+ * on internal reasoning before emitting visible content. With a fixed 768
+ * budget, long dictations (≈2 min, ~300 words) returned EMPTY content
+ * because reasoning consumed the whole pool. Scale the budget with the
+ * raw input length and add headroom for reasoning, plus a hard floor
+ * for short utterances. We also send `reasoning_effort: "minimal"` to
+ * cap thinking on the OpenAI side.
+ */
+function cleanupTokenBudget(raw: string): number {
+  // Roughly: cleanup output ≈ same length as raw (in tokens). Add ~35%
+  // headroom for paragraph splits / examples + reserve for reasoning.
+  const approxInputTokens = Math.ceil(raw.length / 3); // 1 ru-token ≈ 3 chars
+  const target = Math.ceil(approxInputTokens * 1.35) + 1024; // +reasoning reserve
+  return Math.min(Math.max(target, 1024), 8192);
+}
+
 const TRANSCRIBE_PROMPT_RU =
   "Это запись повседневной русской речи: разговоры, диктовка заметок, рабочие сообщения. " +
   "В тексте могут быть имена собственные, технические термины и отдельные английские слова. " +
@@ -487,7 +506,8 @@ export async function* cleanWithGptStream(
     },
     body: JSON.stringify({
       model: LLM_MODEL,
-      max_completion_tokens: 768,
+      max_completion_tokens: cleanupTokenBudget(raw),
+      reasoning_effort: "minimal",
       stream: true,
       messages: [
         { role: "system", content: system },
@@ -542,7 +562,8 @@ async function cleanWithGpt(
     },
     body: JSON.stringify({
       model: LLM_MODEL,
-      max_completion_tokens: 768,
+      max_completion_tokens: cleanupTokenBudget(raw),
+      reasoning_effort: "minimal",
       messages: [
         { role: "system", content: system },
         { role: "user", content: wrapDictation(raw) },

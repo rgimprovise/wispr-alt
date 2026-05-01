@@ -1,40 +1,65 @@
 //! Text injection into the active application.
 //!
-//! Strategy: copy the text to the clipboard, then synthesize the
-//! platform-native paste shortcut targeting whatever app is frontmost.
+//! Strategy: copy the text to the clipboard, verify the OS clipboard
+//! actually reflects our write, then synthesize the platform-native paste
+//! shortcut targeting whatever app is frontmost.
 //!
 //! The synthesis path is platform-specific:
 //!
-//! * **macOS** — AppleScript via `osascript` + System Events. Uses
-//!   `key code 9` (physical V key) so it works regardless of keyboard
-//!   layout. Requires Accessibility permission granted to our app once.
+//! * **macOS** — CGEvent posts Cmd+V using physical key code 9 (V), so
+//!   layout doesn't matter. Requires Accessibility permission granted
+//!   to our app once.
 //!
-//! * **Windows** — `enigo` crate uses `SendInput` under the hood. We send
-//!   the raw virtual-key code `VK_V = 0x56` instead of a Unicode 'v' so
-//!   Ctrl+V is triggered regardless of the user's keyboard layout.
+//! * **Windows** — `enigo` (SendInput). Uses VK_V = 0x56 directly.
+//!
+//! Notes:
+//!
+//! 1. We verify clipboard contents before firing ⌘V to avoid pasting
+//!    stale text on macOS where `arboard.set_text` can return before
+//!    NSPasteboard finishes propagating.
+//!
+//! 2. We DO NOT restore the user's previous clipboard. The naive
+//!    "save prev → set ours → paste → restore prev" pattern races: slow
+//!    target apps consume ⌘V tens or hundreds of ms after we post it,
+//!    by which point we'd already have restored the previous content,
+//!    making them paste the wrong thing. Standard paste utilities (e.g.
+//!    Raycast, Espanso) leave the new text in the clipboard for the
+//!    same reason — predictable behaviour over a "courtesy" restore.
 
 use arboard::Clipboard;
+use std::time::{Duration, Instant};
 
 pub fn paste_text(text: &str) -> Result<(), String> {
     let mut clipboard = Clipboard::new().map_err(|e| format!("clipboard init: {e}"))?;
-    let previous = clipboard.get_text().ok();
 
     clipboard
         .set_text(text.to_string())
         .map_err(|e| format!("clipboard set: {e}"))?;
 
-    // Give the OS time to propagate the new pasteboard contents before
-    // we fire the paste shortcut.
-    std::thread::sleep(std::time::Duration::from_millis(80));
-
-    platform_paste()?;
-
-    // Restore the user's previous clipboard after the paste has landed.
-    if let Some(prev) = previous {
-        std::thread::sleep(std::time::Duration::from_millis(250));
-        let _ = clipboard.set_text(prev);
+    // Spin-wait up to 500 ms until the OS pasteboard reflects our write.
+    // arboard.set_text returns synchronously but on macOS the underlying
+    // NSPasteboard generation tick can lag a few ms; firing ⌘V before
+    // the new generation is visible to the target app makes it paste
+    // whatever WAS in the clipboard before, not what we just wrote.
+    let deadline = Instant::now() + Duration::from_millis(500);
+    let mut verified = false;
+    while Instant::now() < deadline {
+        if let Ok(current) = clipboard.get_text() {
+            if current == text {
+                verified = true;
+                break;
+            }
+        }
+        std::thread::sleep(Duration::from_millis(8));
     }
-    Ok(())
+    if !verified {
+        // One more attempt to set, then proceed regardless. Some macOS
+        // clipboard managers steal ownership; retry covers that case.
+        let _ = clipboard.set_text(text.to_string());
+        std::thread::sleep(Duration::from_millis(40));
+    }
+
+    platform_paste()
 }
 
 #[cfg(target_os = "macos")]

@@ -155,11 +155,22 @@ export class StreamSession {
         // auto-commits on silence, which produces multiple completed
         // events per recording — we concatenate them in completedTurns
         // and emit final_clean after the client's commit signal.
+        //
+        // Tuning for low live-preview latency:
+        //  - silence_duration_ms = 200: VAD triggers on micro-pauses
+        //    between words rather than full sentences, so partials
+        //    arrive within ~1s of speech start instead of after the
+        //    speaker finishes their first thought.
+        //  - threshold = 0.3: more sensitive to quieter mics; trade-off
+        //    is occasional false speech_started on background noise,
+        //    which the model handles gracefully (empty turn).
+        //  - prefix_padding_ms = 300: keep a bit more pre-roll so
+        //    word starts aren't clipped after a pause.
         turn_detection: {
           type: "server_vad",
-          threshold: 0.5,
-          prefix_padding_ms: 200,
-          silence_duration_ms: 500,
+          threshold: 0.3,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 200,
         },
       },
     });

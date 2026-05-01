@@ -9,12 +9,19 @@
 # The service binds to 127.0.0.1:8787 (localhost only) — public HTTPS is
 # Caddy's job, which proxies inbound from your domain to this port.
 
+volumes:
+  wispr_data:
+
 services:
   backend:
     build: .
     container_name: wispr-alt-backend
     restart: unless-stopped
     env_file: .env
+    environment:
+      DB_PATH: /data/wispr.db
+    volumes:
+      - wispr_data:/data
     ports:
       - "127.0.0.1:8787:8787"
     healthcheck:

@@ -10,6 +10,9 @@ RUN bun install --production --frozen-lockfile
 COPY index.ts ./
 COPY src ./src
 
+RUN mkdir -p /data
+VOLUME ["/data"]
+
 EXPOSE 8787
 
 # Fly.io sets PORT via env; backend reads process.env.PORT with 8787 fallback.

@@ -1,14 +1,17 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { transcribe, type Style } from "./src/transcribe";
+import { auth, requireAuth } from "./src/auth";
 
 const app = new Hono();
 
 app.use("/*", cors({ origin: "*" })); // tighten in prod
 
 app.get("/", (c) =>
-  c.json({ ok: true, service: "wispr-alt", version: "0.2.0" })
+  c.json({ ok: true, service: "wispr-alt", version: "0.3.0" })
 );
+
+app.route("/auth", auth);
 
 const VALID_STYLES = new Set<Style>([
   "clean",
@@ -20,7 +23,7 @@ const VALID_STYLES = new Set<Style>([
   "task",
 ]);
 
-app.post("/transcribe", async (c) => {
+app.post("/transcribe", requireAuth, async (c) => {
   try {
     const form = await c.req.formData();
     const file = form.get("audio");

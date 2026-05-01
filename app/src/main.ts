@@ -603,6 +603,7 @@ async function signOut(): Promise<void> {
  */
 async function refreshSetPasswordButton(): Promise<void> {
   const btn = document.getElementById("set-password-btn") as HTMLButtonElement | null;
+  const banner = document.getElementById("set-password-banner");
   if (!btn) return;
   const email = (await invoke("get_auth_email")) as string | null;
   if (!email) return;
@@ -621,12 +622,35 @@ async function refreshSetPasswordButton(): Promise<void> {
       if (has) cur.removeAttribute("hidden");
       else cur.setAttribute("hidden", "");
     }
+    // Show the post-login banner only when no password yet AND the
+    // user hasn't dismissed it this session. Once they set one (or
+    // dismiss), it stays hidden until the session next loads with
+    // hasPassword=false again — which by then never happens.
+    if (banner) {
+      const dismissed = sessionStorage.getItem("setPasswordBannerDismissed") === "1";
+      if (!has && !dismissed) banner.removeAttribute("hidden");
+      else banner.setAttribute("hidden", "");
+    }
   } catch {
     /* leave default label */
   }
 }
 
 function wireSetPasswordPanel(): void {
+  // Banner buttons (post-login hint when no password yet).
+  document.getElementById("banner-set-password")?.addEventListener("click", () => {
+    document.getElementById("set-password-banner")?.setAttribute("hidden", "");
+    document.getElementById("set-password-btn")?.click();
+    document.getElementById("set-password-panel")?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    });
+  });
+  document.getElementById("banner-dismiss")?.addEventListener("click", () => {
+    sessionStorage.setItem("setPasswordBannerDismissed", "1");
+    document.getElementById("set-password-banner")?.setAttribute("hidden", "");
+  });
+
   const btn = document.getElementById("set-password-btn");
   const panel = document.getElementById("set-password-panel");
   const cancel = document.getElementById("set-password-cancel");

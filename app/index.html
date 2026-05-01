@@ -111,6 +111,23 @@
         </div>
       </header>
 
+      <!-- Shown after first OTP login if the user has no password set
+           yet. Self-dismisses on action or close. -->
+      <aside id="set-password-banner" class="banner" hidden>
+        <div class="banner__text">
+          <strong>Установите пароль</strong>
+          <span>В следующий раз войдёте без кода из почты.</span>
+        </div>
+        <div class="banner__actions">
+          <button type="button" id="banner-set-password" class="btn btn--primary btn--small">
+            Установить
+          </button>
+          <button type="button" id="banner-dismiss" class="btn btn--secondary btn--small">
+            Позже
+          </button>
+        </div>
+      </aside>
+
       <p class="hint">
         Нажмите <kbd class="kcap" id="hotkey-hint">F5</kbd> в любом приложении для записи.
       </p>

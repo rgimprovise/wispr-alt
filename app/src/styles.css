@@ -7,6 +7,12 @@ body {
   min-height: 100vh;
 }
 
+/* Make HTML's [hidden] attribute actually win over flex/grid display
+   rules. Without this, .container { display: flex } overrides the UA
+   stylesheet's [hidden] { display: none } and both auth gate and main
+   surface render simultaneously. */
+[hidden] { display: none !important; }
+
 .container {
   max-width: 640px;
   margin: 0 auto;
@@ -353,4 +359,37 @@ body {
   font-weight: 600;
   margin: 0;
   color: var(--text-primary);
+}
+
+/* ── Post-login set-password banner ──────────────────── */
+.banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--surface-mint, #ECEFEA);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+}
+.banner__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+.banner__text strong {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 14px;
+}
+.banner__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.btn--small {
+  padding: 8px 14px;
+  font-size: 13px;
 }

@@ -1,11 +1,11 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.content.Context
 import android.content.SharedPreferences
 
 /** Tracks whether the user has completed the onboarding carousel. */
 object OnboardingState {
-    private const val PREFS = "wispr-alt-onboarding"
+    private const val PREFS = "agolos-onboarding"
     private const val KEY_COMPLETED = "completed"
 
     fun isCompleted(ctx: Context): Boolean = prefs(ctx).getBoolean(KEY_COMPLETED, false)

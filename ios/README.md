@@ -52,7 +52,7 @@ open Belovik.xcodeproj
 После этого откройте `ios/wispr-alt/SharedStorage.swift` И `ios/wispr-alt-keyboard/SharedStorage.swift`, замените:
 
 ```swift
-static let appGroup = "group.com.wispralt.app"
+static let appGroup = "group.app.agolos.shared"
 ```
 
 на ваше значение `group.com.<вашлогин>.belovik`. Сохраните, билдите.

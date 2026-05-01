@@ -18,7 +18,7 @@ const app = new Hono();
 app.use("/*", cors({ origin: "*" })); // tighten in prod
 
 app.get("/", (c) =>
-  c.json({ ok: true, service: "wispr-alt", version: "2.0.0-alpha.1" })
+  c.json({ ok: true, service: "agolos", version: "2.0.0-alpha.1" })
 );
 
 app.route("/auth", auth);
@@ -178,6 +178,6 @@ app.get(
 );
 
 const port = Number(process.env.PORT ?? 8787);
-console.log(`wispr-alt backend listening on :${port}`);
+console.log(`agolos backend listening on :${port}`);
 
 export default { port, fetch: app.fetch, websocket };

@@ -2,8 +2,12 @@
 // package to keep dependencies minimal — the API surface we need is one POST.
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const RESEND_FROM = process.env.RESEND_FROM ?? "А-ГОЛОС <noreply@agolos.app>";
-const APP_URL = process.env.APP_URL ?? "https://agolos.app";
+// Override on VPS via `.env`. Display name "А-ГОЛОС" is fixed; the
+// "@..." domain has to match a Resend-verified sender. Until the prod
+// domain is purchased + verified, point at the existing
+// belovik.n8nrgimprovise.space subdomain or whatever is configured.
+const RESEND_FROM = process.env.RESEND_FROM ?? "А-ГОЛОС <noreply@belovik.n8nrgimprovise.space>";
+const APP_URL = process.env.APP_URL ?? "https://alrcvscribe.n8nrgimprovise.space";
 
 export type MagicLinkEmail = {
   to: string;

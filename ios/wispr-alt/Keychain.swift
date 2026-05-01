@@ -6,7 +6,7 @@ import Security
 /// apps yet, so a kSecClassGenericPassword item with a per-key account
 /// name is enough.
 enum Keychain {
-    private static let service = "com.wispralt.app"
+    private static let service = "app.agolos"
 
     static func string(forKey key: String) -> String? {
         var query: [String: Any] = [

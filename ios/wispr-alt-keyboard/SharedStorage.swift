@@ -4,7 +4,7 @@
 import Foundation
 
 enum SharedStorage {
-    static let appGroup = "group.com.rgimprovise.belovik"
+    static let appGroup = "group.app.agolos.shared"
     static let pendingKey = "pendingTranscript"
     static let timestampKey = "pendingTranscriptAt"
 

@@ -1,7 +1,7 @@
 import SwiftUI
 import AVFoundation
 
-/// Recording screen launched via wispralt://dictate from the keyboard.
+/// Recording screen launched via agolos://dictate from the keyboard.
 struct DictateView: View {
     enum Phase {
         case idle
@@ -19,7 +19,7 @@ struct DictateView: View {
 
     var body: some View {
         ZStack {
-            BelovikColor.paper.ignoresSafeArea()
+            AgolosColor.paper.ignoresSafeArea()
 
             VStack(spacing: 24) {
                 styleChip
@@ -31,8 +31,8 @@ struct DictateView: View {
                     .padding(.bottom, 8)
 
                 Text(statusText)
-                    .font(.belovikDisplay(26))
-                    .foregroundStyle(BelovikColor.textPrimary)
+                    .font(.agolosDisplay(26))
+                    .foregroundStyle(AgolosColor.textPrimary)
                     .multilineTextAlignment(.center)
                     .padding(.horizontal, 32)
 
@@ -70,15 +70,15 @@ struct DictateView: View {
                 Image(systemName: "wand.and.stars")
                     .font(.system(size: 11, weight: .medium))
                 Text(styleStore.current.label)
-                    .font(.belovikUI(12, weight: .semibold))
+                    .font(.agolosUI(12, weight: .semibold))
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .semibold))
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 7)
-            .foregroundStyle(BelovikColor.textPrimary)
-            .background(BelovikColor.surface, in: Capsule())
-            .overlay(Capsule().stroke(BelovikColor.borderSubtle, lineWidth: 1))
+            .foregroundStyle(AgolosColor.textPrimary)
+            .background(AgolosColor.surface, in: Capsule())
+            .overlay(Capsule().stroke(AgolosColor.borderSubtle, lineWidth: 1))
         }
         .buttonStyle(.plain)
     }
@@ -108,10 +108,10 @@ struct DictateView: View {
 
     private var badgeColor: Color {
         switch state {
-        case .idle, .recording: return BelovikColor.rec
-        case .transcribing:     return BelovikColor.transcribing
-        case .done:             return BelovikColor.success
-        case .error:            return BelovikColor.error
+        case .idle, .recording: return AgolosColor.rec
+        case .transcribing:     return AgolosColor.transcribing
+        case .done:             return AgolosColor.success
+        case .error:            return AgolosColor.error
         }
     }
 
@@ -128,16 +128,16 @@ struct DictateView: View {
     private func transcriptCard(text: String) -> some View {
         ScrollView {
             Text(text)
-                .font(.belovikUI(15))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(15))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(20)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
         .frame(maxHeight: 220)
-        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.xxl))
+        .background(AgolosColor.surface, in: RoundedRectangle(cornerRadius: AgolosRadius.xxl))
         .overlay(
-            RoundedRectangle(cornerRadius: BelovikRadius.xxl)
-                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AgolosRadius.xxl)
+                .stroke(AgolosColor.borderSubtle, lineWidth: 1)
         )
     }
 
@@ -147,34 +147,34 @@ struct DictateView: View {
         case .recording:
             Button(action: stopAndTranscribe) {
                 Label("Готово", systemImage: "stop.fill")
-                    .font(.belovikUI(16, weight: .semibold))
+                    .font(.agolosUI(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: Capsule())
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .background(AgolosColor.graphite, in: Capsule())
+                    .foregroundStyle(AgolosColor.textInverse)
             }
         case .done:
             VStack(spacing: 10) {
                 Button(action: handoffToKeyboard) {
                     Label("Передать в клавиатуру", systemImage: "keyboard")
-                        .font(.belovikUI(16, weight: .semibold))
+                        .font(.agolosUI(16, weight: .semibold))
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 16)
-                        .background(BelovikColor.graphite, in: Capsule())
-                        .foregroundStyle(BelovikColor.textInverse)
+                        .background(AgolosColor.graphite, in: Capsule())
+                        .foregroundStyle(AgolosColor.textInverse)
                 }
                 Button("Записать ещё раз", action: startRecording)
-                    .font(.belovikUI(14))
-                    .foregroundStyle(BelovikColor.textSecondary)
+                    .font(.agolosUI(14))
+                    .foregroundStyle(AgolosColor.textSecondary)
             }
         case .error:
             Button(action: startRecording) {
                 Text("Попробовать снова")
-                    .font(.belovikUI(16, weight: .semibold))
+                    .font(.agolosUI(16, weight: .semibold))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: Capsule())
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .background(AgolosColor.graphite, in: Capsule())
+                    .foregroundStyle(AgolosColor.textInverse)
             }
         default:
             EmptyView()

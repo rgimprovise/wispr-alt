@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient

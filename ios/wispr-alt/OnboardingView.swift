@@ -10,18 +10,18 @@ struct OnboardingView: View {
 
     var body: some View {
         ZStack {
-            BelovikColor.paper.ignoresSafeArea()
+            AgolosColor.paper.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     Text("А-ГОЛОС")
-                        .font(.belovikDisplay(40))
-                        .foregroundStyle(BelovikColor.textPrimary)
+                        .font(.agolosDisplay(40))
+                        .foregroundStyle(AgolosColor.textPrimary)
                         .padding(.top, 24)
 
                     Text("Скажите мысль. Получите текст.")
-                        .font(.belovikUI(15))
-                        .foregroundStyle(BelovikColor.textSecondary)
+                        .font(.agolosUI(15))
+                        .foregroundStyle(AgolosColor.textSecondary)
 
                     Spacer().frame(height: 8)
 
@@ -84,37 +84,37 @@ struct OnboardingView: View {
     private var setPasswordBanner: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Установите пароль")
-                .font(.belovikUI(15, weight: .semibold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(15, weight: .semibold))
+                .foregroundStyle(AgolosColor.textPrimary)
             Text("В следующий раз войдёте без кода из почты.")
-                .font(.belovikUI(13))
-                .foregroundStyle(BelovikColor.textSecondary)
+                .font(.agolosUI(13))
+                .foregroundStyle(AgolosColor.textSecondary)
             HStack(spacing: 8) {
                 Button("Установить") { showingSetPassword = true }
-                    .font(.belovikUI(13, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .font(.agolosUI(13, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textInverse)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 12))
+                    .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: 12))
                 Button("Позже") { bannerDismissed = true }
-                    .font(.belovikUI(13, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textPrimary)
+                    .font(.agolosUI(13, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textPrimary)
                     .padding(.horizontal, 16)
                     .padding(.vertical, 10)
-                    .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .background(AgolosColor.surface, in: RoundedRectangle(cornerRadius: 12))
                     .overlay(
                         RoundedRectangle(cornerRadius: 12)
-                            .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                            .stroke(AgolosColor.borderSubtle, lineWidth: 1)
                     )
             }
             .padding(.top, 4)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BelovikColor.surfaceMint, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+        .background(AgolosColor.surfaceMint, in: RoundedRectangle(cornerRadius: AgolosRadius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: BelovikRadius.lg)
-                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AgolosRadius.lg)
+                .stroke(AgolosColor.borderSubtle, lineWidth: 1)
         )
     }
 
@@ -140,7 +140,7 @@ struct OnboardingView: View {
             HStack(alignment: .top, spacing: 12) {
                 ZStack {
                     Circle()
-                        .fill(done ? BelovikColor.success : BelovikColor.graphite)
+                        .fill(done ? AgolosColor.success : AgolosColor.graphite)
                         .frame(width: 28, height: 28)
                     if done {
                         Image(systemName: "checkmark")
@@ -148,17 +148,17 @@ struct OnboardingView: View {
                             .foregroundStyle(.white)
                     } else {
                         Text("\(index)")
-                            .font(.belovikUI(13, weight: .bold))
+                            .font(.agolosUI(13, weight: .bold))
                             .foregroundStyle(.white)
                     }
                 }
                 VStack(alignment: .leading, spacing: 4) {
                     Text(title)
-                        .font(.belovikUI(16, weight: .semibold))
-                        .foregroundStyle(BelovikColor.textPrimary)
+                        .font(.agolosUI(16, weight: .semibold))
+                        .foregroundStyle(AgolosColor.textPrimary)
                     Text(body)
-                        .font(.belovikUI(13))
-                        .foregroundStyle(BelovikColor.textSecondary)
+                        .font(.agolosUI(13))
+                        .foregroundStyle(AgolosColor.textSecondary)
                         .lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -166,59 +166,59 @@ struct OnboardingView: View {
             if !done {
                 Button(action: action) {
                     Text(cta)
-                        .font(.belovikUI(14, weight: .semibold))
-                        .foregroundStyle(BelovikColor.textInverse)
+                        .font(.agolosUI(14, weight: .semibold))
+                        .foregroundStyle(AgolosColor.textInverse)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: BelovikRadius.md))
+                        .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: AgolosRadius.md))
                 }
             }
         }
         .padding(20)
-        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.xxl))
+        .background(AgolosColor.surface, in: RoundedRectangle(cornerRadius: AgolosRadius.xxl))
         .overlay(
-            RoundedRectangle(cornerRadius: BelovikRadius.xxl)
-                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AgolosRadius.xxl)
+                .stroke(AgolosColor.borderSubtle, lineWidth: 1)
         )
     }
 
     private var instructionsCard: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Как использовать")
-                .font(.belovikUI(14, weight: .bold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(14, weight: .bold))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .textCase(.uppercase)
                 .tracking(0.6)
             Text(
                 "В любом приложении тапните в текстовое поле. Удерживайте 🌐 на клавиатуре → выберите Беловик. Тап 🎤 → говорите → текст вставится автоматически."
             )
-            .font(.belovikUI(13))
-            .foregroundStyle(BelovikColor.textSecondary)
+            .font(.agolosUI(13))
+            .foregroundStyle(AgolosColor.textSecondary)
             .lineSpacing(3)
         }
         .padding(20)
-        .background(BelovikColor.surfaceMint, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+        .background(AgolosColor.surfaceMint, in: RoundedRectangle(cornerRadius: AgolosRadius.lg))
     }
 
     private var accountCard: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Аккаунт")
-                .font(.belovikUI(14, weight: .bold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(14, weight: .bold))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .textCase(.uppercase)
                 .tracking(0.6)
             Text(auth.email ?? "—")
-                .font(.belovikUI(15))
-                .foregroundStyle(BelovikColor.textSecondary)
+                .font(.agolosUI(15))
+                .foregroundStyle(AgolosColor.textSecondary)
             HStack(spacing: 12) {
                 Button("Установить / сменить пароль") {
                     showingSetPassword = true
                 }
-                .font(.belovikUI(13, weight: .semibold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(13, weight: .semibold))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
+                .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
 
                 Button("Выйти") {
                     if let token = auth.token {
@@ -227,19 +227,19 @@ struct OnboardingView: View {
                     }
                     auth.clear()
                 }
-                .font(.belovikUI(13, weight: .semibold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(13, weight: .semibold))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(.horizontal, 14)
                 .padding(.vertical, 10)
-                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
+                .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
             }
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+        .background(AgolosColor.surface, in: RoundedRectangle(cornerRadius: AgolosRadius.lg))
         .overlay(
-            RoundedRectangle(cornerRadius: BelovikRadius.lg)
-                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+            RoundedRectangle(cornerRadius: AgolosRadius.lg)
+                .stroke(AgolosColor.borderSubtle, lineWidth: 1)
         )
     }
 

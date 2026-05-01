@@ -1,9 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- А-ГОЛОС angular «А» mark for in-app overlay buttons. No built-in
      tint — callers set color via setColorFilter() / ImageView.imageTintList.
-     Resource name kept as ic_belovik_b for backward compat with existing
-     R.drawable.ic_belovik_b references; will be renamed to ic_a_mark in
-     a follow-up B2 rename pass. -->
+     Path extracted from RodchenkoC SHA OTF, identical to
+     brand/logo/svg/letter-a.svg. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"

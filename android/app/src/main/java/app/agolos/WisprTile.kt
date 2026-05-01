@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
@@ -6,17 +6,17 @@ import android.service.quicksettings.TileService
 /**
  * Quick Settings tile — primary user trigger for invoking dictation
  * without leaving the foreground app. User pulls down their notification
- * shade twice, taps the wispr-alt tile, the overlay appears.
+ * shade twice, taps the А-ГОЛОС tile, the overlay appears.
  *
  * Tile must be added to the QS panel manually first (Edit tiles in QS panel
- * → drag wispr-alt up). MainActivity onboarding tells the user how.
+ * → drag А-ГОЛОС up). MainActivity onboarding tells the user how.
  */
 class WisprTile : TileService() {
 
     override fun onStartListening() {
         super.onStartListening()
         qsTile?.apply {
-            label = "wispr-alt"
+            label = "А-ГОЛОС"
             state = Tile.STATE_INACTIVE
             updateTile()
         }

@@ -1,13 +1,13 @@
-# XcodeGen spec — generates Belovik.xcodeproj from this declarative
+# XcodeGen spec — generates AGOLOS.xcodeproj from this declarative
 # config. Avoids checking in the cumbersome Xcode project files.
 #
 # Usage:
 #   brew install xcodegen
 #   cd ios && xcodegen
-#   open Belovik.xcodeproj
-name: Belovik
+#   open AGOLOS.xcodeproj
+name: AGOLOS
 options:
-  bundleIdPrefix: com.wispralt
+  bundleIdPrefix: app.agolos
   deploymentTarget:
     iOS: "17.0"
   developmentLanguage: ru
@@ -25,7 +25,7 @@ configFiles:
   Release: Configs/Release.xcconfig
 
 targets:
-  Belovik:
+  AGOLOS:
     type: application
     platform: iOS
     sources:
@@ -38,22 +38,21 @@ targets:
         UILaunchScreen: {}
         NSMicrophoneUsageDescription: "А-ГОЛОС использует микрофон для записи и транскрипции вашей речи."
         CFBundleURLTypes:
-          - CFBundleURLName: com.wispralt.app
+          - CFBundleURLName: app.agolos
             CFBundleURLSchemes:
-              - wispralt
-              - belovik
+              - agolos
         UIBackgroundModes:
           - audio
         WISPR_BACKEND_URL: $(WISPR_BACKEND_URL)
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wispralt.app
+        PRODUCT_BUNDLE_IDENTIFIER: app.agolos
         TARGETED_DEVICE_FAMILY: "1,2"
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: "YES"
     dependencies:
-      - target: BelovikKeyboard
+      - target: AGOLOSKeyboard
 
-  BelovikKeyboard:
+  AGOLOSKeyboard:
     type: app-extension
     platform: iOS
     sources:
@@ -72,4 +71,4 @@ targets:
           NSExtensionPrincipalClass: $(PRODUCT_MODULE_NAME).KeyboardViewController
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.wispralt.app.keyboard
+        PRODUCT_BUNDLE_IDENTIFIER: app.agolos.keyboard

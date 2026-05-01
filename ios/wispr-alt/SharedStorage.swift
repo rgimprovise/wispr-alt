@@ -9,7 +9,7 @@ import Foundation
 /// The keyboard polls this storage on every viewWillAppear and commits any
 /// pending transcript to the current input field, then clears it.
 enum SharedStorage {
-    static let appGroup = "group.com.rgimprovise.belovik"
+    static let appGroup = "group.app.agolos.shared"
     static let pendingKey = "pendingTranscript"
     static let timestampKey = "pendingTranscriptAt"
 

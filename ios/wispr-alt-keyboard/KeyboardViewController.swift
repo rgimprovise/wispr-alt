@@ -1,8 +1,8 @@
 import UIKit
 
 /// Keyboard extension. Two layouts (EN QWERTY / RU ЙЦУКЕН) plus a
-/// prominent microphone key. The mic key opens the main wispr-alt app
-/// via the wispralt:// URL scheme; the main app records and writes the
+/// prominent microphone key. The mic key opens the main А-ГОЛОС app
+/// via the agolos:// URL scheme; the main app records and writes the
 /// transcript to a shared App Group. On every viewWillAppear we poll
 /// the shared store and commit any pending text to the active field.
 final class KeyboardViewController: UIInputViewController {
@@ -21,7 +21,7 @@ final class KeyboardViewController: UIInputViewController {
 
     // ─── Lifecycle ────────────────────────────────────────────────────────
 
-    // Belovik palette mirrored from BelovikTokens.swift / tokens.css.
+    // А-ГОЛОС palette mirrored from AgolosTokens.swift / tokens.css.
     private struct Pal {
         // Light keyboard surface (matches paper-soft background).
         static let bg            = UIColor(red: 0xF4/255, green: 0xF1/255, blue: 0xEC/255, alpha: 1)
@@ -182,7 +182,7 @@ final class KeyboardViewController: UIInputViewController {
         let b = UIButton(type: .custom)
         let size = CGSize(width: 60, height: 60)
         let signalRed = UIColor(red: 0xF2/255, green: 0x2A/255, blue: 0x37/255, alpha: 1)
-        let aMark = BelovikMark.image(size: size, color: signalRed)
+        let aMark = AgolosMark.image(size: size, color: signalRed)
         b.setImage(aMark, for: .normal)
         b.imageView?.contentMode = .scaleAspectFit
         b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
@@ -209,11 +209,11 @@ final class KeyboardViewController: UIInputViewController {
     // ─── Mic → open main app ──────────────────────────────────────────────
 
     /// Walks the responder chain to find UIApplication and opens the
-    /// wispralt://dictate URL. App extensions can't call
+    /// agolos://dictate URL. App extensions can't call
     /// UIApplication.shared directly, but the responder-chain workaround
     /// works on every iOS version we support.
     private func openMainAppForDictation() {
-        guard let url = URL(string: "wispralt://dictate") else { return }
+        guard let url = URL(string: "agolos://dictate") else { return }
 
         var responder: UIResponder? = self
         while responder != nil {

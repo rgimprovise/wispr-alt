@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -18,12 +18,12 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 
 /**
- * Long-running foreground service. Keeps wispr-alt alive in the background
+ * Long-running foreground service. Keeps А-ГОЛОС alive in the background
  * so the QS tile, notification action, and (future) Accessibility-service
  * gesture triggers can pop the overlay without re-launching the app.
  *
  * Lifecycle:
- *   - Started by MainActivity when the user enables wispr-alt.
+ *   - Started by MainActivity when the user enables А-ГОЛОС.
  *   - Posts a persistent notification with a "Dictate" action.
  *   - On ACTION_DICTATE intent (from tile / notification / Activity / a11y),
  *     spins up the OverlayController which handles UI + recording.
@@ -141,7 +141,7 @@ class WisprService : Service() {
 
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_status)
-            .setContentTitle("wispr-alt активен")
+            .setContentTitle("А-ГОЛОС активен")
             .setContentText("Тапните «Диктовка» или используйте плитку быстрых настроек")
             .setOngoing(true)
             .setContentIntent(openPending)
@@ -153,11 +153,11 @@ class WisprService : Service() {
 
     companion object {
         private const val TAG = "WisprService"
-        const val CHANNEL_ID = "wispr-alt-running"
+        const val CHANNEL_ID = "agolos-running"
         const val NOTIF_ID = 1001
 
-        const val ACTION_DICTATE = "com.wispralt.keyboard.action.DICTATE"
-        const val ACTION_STOP = "com.wispralt.keyboard.action.STOP"
+        const val ACTION_DICTATE = "app.agolos.action.DICTATE"
+        const val ACTION_STOP = "app.agolos.action.STOP"
 
         @Volatile
         var instance: WisprService? = null

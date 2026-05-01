@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.content.Intent
 import android.os.Bundle
@@ -49,7 +49,7 @@ class LoginActivity : AppCompatActivity() {
     }
 
     /**
-     * Handles `belovik://auth?token=…&email=…` opened from the magic-link
+     * Handles `agolos://auth?token=…&email=…` opened from the magic-link
      * email. If a token is present we save the session and finish; the
      * caller (MainActivity) re-checks AuthStore on resume and continues.
      *
@@ -59,7 +59,7 @@ class LoginActivity : AppCompatActivity() {
     private fun handleDeepLinkIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
         val uri = intent.data ?: return
-        if (uri.scheme != "belovik" || uri.host != "auth") return
+        if (uri.scheme != "agolos" || uri.host != "auth") return
         val token = uri.getQueryParameter("token")?.takeIf { it.isNotBlank() } ?: return
         val emailFromLink = uri.getQueryParameter("email")?.takeIf { it.isNotBlank() }
             ?: AuthStore.email(this)

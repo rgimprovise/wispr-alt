@@ -4,11 +4,11 @@ import SwiftUI
 /// Mirrors `app/src/tokens.css` and `android/.../colors.xml` so all
 /// three platforms render the same brand. See brand/BRAND.md.
 ///
-/// v2 is dark-only. The `BelovikColor` enum name is kept for
+/// v2 is dark-only. The `AgolosColor` enum name is kept for
 /// backward-compatibility with existing UI code; values are remapped
 /// to the new dark А-ГОЛОС palette. New brand-named aliases (signalRed,
 /// charcoal, etc.) are additive — prefer those in new code.
-enum BelovikColor {
+enum AgolosColor {
     // ── New A-GOLOS brand palette ──────────────────────────
     static let charcoal     = Color(hex: 0x0B0D16)  // base
     static let nightBlue    = Color(hex: 0x11182B)
@@ -20,7 +20,7 @@ enum BelovikColor {
 
     // ── Legacy aliases (existing UI code keeps using these) ─
     // Bound to dark equivalents so SwiftUI views that read
-    // BelovikColor.paper, .graphite etc. render the new theme
+    // AgolosColor.paper, .graphite etc. render the new theme
     // without source changes.
     static let paper        = Color(hex: 0x0B0D16)
     static let paperSoft    = Color(hex: 0x161A24)
@@ -54,7 +54,7 @@ enum BelovikColor {
     static let borderAccent  = Color(hex: 0xF22A37, opacity: 0.40)
 }
 
-enum BelovikRadius {
+enum AgolosRadius {
     static let sm: CGFloat = 8
     static let md: CGFloat = 14   // buttons / inputs (was 12)
     static let lg: CGFloat = 16
@@ -68,7 +68,7 @@ extension Font {
     /// Display headings — Inter Display (registered in Info.plist /
     /// added to bundle in B1). Falls back to system rounded-bold while
     /// the font file is being added so the build doesn't break.
-    static func belovikDisplay(_ size: CGFloat, weight: Font.Weight = .black) -> Font {
+    static func agolosDisplay(_ size: CGFloat, weight: Font.Weight = .black) -> Font {
         if let _ = UIFont(name: "InterDisplay-Black", size: size) {
             return .custom("InterDisplay-Black", size: size)
         }
@@ -76,7 +76,7 @@ extension Font {
     }
 
     /// UI / body — Inter (added to bundle in B1).
-    static func belovikUI(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
+    static func agolosUI(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         let postscript: String
         switch weight {
         case .bold:     postscript = "Inter-Bold"
@@ -90,7 +90,7 @@ extension Font {
         return .system(size: size, weight: weight, design: .default)
     }
 
-    static func belovikMono(_ size: CGFloat) -> Font {
+    static func agolosMono(_ size: CGFloat) -> Font {
         .system(size: size, weight: .medium, design: .monospaced)
     }
 }

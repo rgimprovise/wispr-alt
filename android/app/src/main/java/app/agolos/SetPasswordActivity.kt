@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.os.Bundle
 import android.text.InputType

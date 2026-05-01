@@ -21,7 +21,7 @@ struct LoginView: View {
 
     var body: some View {
         ZStack {
-            BelovikColor.paper.ignoresSafeArea()
+            AgolosColor.paper.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 24) {
@@ -45,11 +45,11 @@ struct LoginView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("А-ГОЛОС")
-                .font(.belovikDisplay(36))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosDisplay(36))
+                .foregroundStyle(AgolosColor.textPrimary)
             Text("Скажите мысль. Получите текст.")
-                .font(.belovikUI(14))
-                .foregroundStyle(BelovikColor.textSecondary)
+                .font(.agolosUI(14))
+                .foregroundStyle(AgolosColor.textSecondary)
         }
     }
 
@@ -65,24 +65,24 @@ struct LoginView: View {
                 .textContentType(.emailAddress)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
-                .font(.belovikUI(16))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(16))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(14)
-                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
+                .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                        .stroke(AgolosColor.borderSubtle, lineWidth: 1)
                 )
 
             errorRow
 
             Button(action: submitEmail) {
                 Text(inFlight ? "Проверяем…" : "Продолжить")
-                    .font(.belovikUI(15, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .font(.agolosUI(15, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textInverse)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 14))
+                    .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: 14))
             }
             .disabled(inFlight || email.trimmingCharacters(in: .whitespaces).isEmpty)
             .opacity(inFlight ? 0.6 : 1)
@@ -130,34 +130,34 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Введите пароль")
-                    .font(.belovikDisplay(28))
-                    .foregroundStyle(BelovikColor.textPrimary)
+                    .font(.agolosDisplay(28))
+                    .foregroundStyle(AgolosColor.textPrimary)
                 Text("Аккаунт \(pendingEmail).")
-                    .font(.belovikUI(14))
-                    .foregroundStyle(BelovikColor.textSecondary)
+                    .font(.agolosUI(14))
+                    .foregroundStyle(AgolosColor.textSecondary)
             }
 
             SecureField("Пароль", text: $password)
                 .textFieldStyle(.plain)
                 .textContentType(.password)
-                .font(.belovikUI(16))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(16))
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(14)
-                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
+                .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                        .stroke(AgolosColor.borderSubtle, lineWidth: 1)
                 )
 
             errorRow
 
             Button(action: submitPassword) {
                 Text(inFlight ? "Входим…" : "Войти")
-                    .font(.belovikUI(15, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .font(.agolosUI(15, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textInverse)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 14))
+                    .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: 14))
             }
             .disabled(inFlight || password.isEmpty)
             .opacity(inFlight ? 0.6 : 1)
@@ -177,8 +177,8 @@ struct LoginView: View {
                     }
                 }
             }
-            .font(.belovikUI(14))
-            .foregroundStyle(BelovikColor.textSecondary)
+            .font(.agolosUI(14))
+            .foregroundStyle(AgolosColor.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
 
@@ -188,8 +188,8 @@ struct LoginView: View {
                 errorMessage = nil
                 step = .email
             }
-            .font(.belovikUI(14))
-            .foregroundStyle(BelovikColor.textSecondary)
+            .font(.agolosUI(14))
+            .foregroundStyle(AgolosColor.textSecondary)
             .frame(maxWidth: .infinity)
         }
     }
@@ -219,11 +219,11 @@ struct LoginView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 6) {
                 Text("Введите код")
-                    .font(.belovikDisplay(28))
-                    .foregroundStyle(BelovikColor.textPrimary)
+                    .font(.agolosDisplay(28))
+                    .foregroundStyle(AgolosColor.textPrimary)
                 Text("Код отправлен на \(pendingEmail). Действует 10 минут.")
-                    .font(.belovikUI(14))
-                    .foregroundStyle(BelovikColor.textSecondary)
+                    .font(.agolosUI(14))
+                    .foregroundStyle(AgolosColor.textSecondary)
             }
 
             TextField("123456", text: $code)
@@ -233,12 +233,12 @@ struct LoginView: View {
                 .font(.system(size: 28, weight: .semibold, design: .monospaced))
                 .tracking(8)
                 .multilineTextAlignment(.center)
-                .foregroundStyle(BelovikColor.textPrimary)
+                .foregroundStyle(AgolosColor.textPrimary)
                 .padding(14)
-                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
+                .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
                 .overlay(
                     RoundedRectangle(cornerRadius: 14)
-                        .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                        .stroke(AgolosColor.borderSubtle, lineWidth: 1)
                 )
                 .onChange(of: code) { _, newVal in
                     // Strip non-digits and clamp to 6 chars.
@@ -250,11 +250,11 @@ struct LoginView: View {
 
             Button(action: submitCode) {
                 Text(inFlight ? "Проверяем…" : "Войти")
-                    .font(.belovikUI(15, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .font(.agolosUI(15, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textInverse)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 14))
+                    .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: 14))
             }
             .disabled(inFlight || code.count != 6)
             .opacity(inFlight ? 0.6 : 1)
@@ -265,8 +265,8 @@ struct LoginView: View {
                 code = ""
                 step = .email
             }
-            .font(.belovikUI(14))
-            .foregroundStyle(BelovikColor.textSecondary)
+            .font(.agolosUI(14))
+            .foregroundStyle(AgolosColor.textSecondary)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
         }
@@ -300,7 +300,7 @@ struct LoginView: View {
     private var errorRow: some View {
         if let msg = errorMessage {
             Text(msg)
-                .font(.belovikUI(13))
+                .font(.agolosUI(13))
                 .foregroundStyle(Color(red: 185/255, green: 69/255, blue: 69/255))
                 .padding(.horizontal, 12)
                 .padding(.vertical, 10)
@@ -315,18 +315,18 @@ struct LoginView: View {
     private func card(title: String, body: String) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(title)
-                .font(.belovikUI(17, weight: .semibold))
-                .foregroundStyle(BelovikColor.textPrimary)
+                .font(.agolosUI(17, weight: .semibold))
+                .foregroundStyle(AgolosColor.textPrimary)
             Text(body)
-                .font(.belovikUI(13))
-                .foregroundStyle(BelovikColor.textSecondary)
+                .font(.agolosUI(13))
+                .foregroundStyle(AgolosColor.textSecondary)
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: 20))
+        .background(AgolosColor.surface, in: RoundedRectangle(cornerRadius: 20))
         .overlay(
             RoundedRectangle(cornerRadius: 20)
-                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                .stroke(AgolosColor.borderSubtle, lineWidth: 1)
         )
     }
 

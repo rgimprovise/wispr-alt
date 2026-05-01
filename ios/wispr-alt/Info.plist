@@ -22,10 +22,10 @@
 	<array>
 		<dict>
 			<key>CFBundleURLName</key>
-			<string>com.wispralt.app</string>
+			<string>app.agolos</string>
 			<key>CFBundleURLSchemes</key>
 			<array>
-				<string>wispralt</string>
+				<string>agolos</string>
 			</array>
 		</dict>
 	</array>

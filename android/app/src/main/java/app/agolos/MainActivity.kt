@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.Manifest
 import android.content.Context
@@ -433,7 +433,7 @@ class MainActivity : AppCompatActivity() {
         // Only render once we know for sure: null = unchecked → silence,
         // true = set → silence, false = need to suggest setting one.
         if (passwordIsSet != false) return
-        val prefs = getSharedPreferences("wispr-alt-ui", Context.MODE_PRIVATE)
+        val prefs = getSharedPreferences("agolos-ui", Context.MODE_PRIVATE)
         if (prefs.getBoolean("setPasswordBannerDismissed", false)) return
 
         val card = LinearLayout(this).apply {

@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.content.Context
 
@@ -28,7 +28,7 @@ enum class DictationStyle(
 
 /** Persists the user's preferred dictation style in SharedPreferences. */
 object StyleStore {
-    private const val PREFS = "wispr-alt-style"
+    private const val PREFS = "agolos-style"
     private const val KEY = "style"
 
     fun get(ctx: Context): DictationStyle {

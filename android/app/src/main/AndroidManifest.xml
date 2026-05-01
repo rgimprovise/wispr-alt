@@ -14,7 +14,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application
-        android:label="wispr-alt"
+        android:label="А-ГОЛОС"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:allowBackup="true"
@@ -35,7 +35,7 @@
              a 401 from the backend. MainActivity routes here when no
              token is present in AuthStore.
              singleTask + exported so the magic link email's
-             belovik://auth?token=... URL routes here whether the app is
+             agolos://auth?token=... URL routes here whether the app is
              cold or already in foreground; onNewIntent handles re-entry. -->
         <activity
             android:name=".LoginActivity"
@@ -45,7 +45,7 @@
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.BROWSABLE" />
-                <data android:scheme="belovik" android:host="auth" />
+                <data android:scheme="agolos" android:host="auth" />
             </intent-filter>
         </activity>
 
@@ -79,7 +79,7 @@
         <service
             android:name=".WisprTile"
             android:icon="@drawable/ic_status"
-            android:label="wispr-alt"
+            android:label="А-ГОЛОС"
             android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
             android:exported="true">
             <intent-filter>

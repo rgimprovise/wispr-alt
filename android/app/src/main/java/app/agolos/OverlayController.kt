@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.content.Context
 import android.graphics.PixelFormat
@@ -188,7 +188,7 @@ class OverlayController(private val service: WisprService) {
 
     private var bubbleParams: WindowManager.LayoutParams? = null
     private val prefs by lazy {
-        ctx.getSharedPreferences("wispr-alt-overlay", Context.MODE_PRIVATE)
+        ctx.getSharedPreferences("agolos-overlay", Context.MODE_PRIVATE)
     }
 
     private data class BubblePos(val x: Int, val y: Int)
@@ -313,7 +313,7 @@ class OverlayController(private val service: WisprService) {
             alpha = 0.6f
         }
         val icon = ImageView(ctx).apply {
-            setImageResource(R.drawable.ic_belovik_b)
+            setImageResource(R.drawable.ic_agolos_a)
             setColorFilter(0xFFF22A37.toInt()) // signal red
             scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = FrameLayout.LayoutParams(
@@ -431,7 +431,7 @@ class OverlayController(private val service: WisprService) {
         // Mic is now a Belovik-Б watermark on a graphite square (60% alpha),
         // not the 🎤 emoji.
         val cancelBtn = circleButton("✕", 0xFFE8E5DD.toInt(), fg = 0xFF555A63.toInt()) { onCancelTap() }
-        val micBtn = belovikSquareButton(big = true) { onMicTap() }
+        val micBtn = agolosSquareButton(big = true) { onMicTap() }
         val confirmBtn = circleButton("✓", 0xFFECEFEA.toInt(), fg = 0xFF5C7A5A.toInt()) { onConfirmTap() }
 
         controls.addView(cancelBtn)
@@ -480,7 +480,7 @@ class OverlayController(private val service: WisprService) {
      * «Б» mark centered in graphite, whole button at 60% opacity. Matches
      * the bubble visual language — same brand element.
      */
-    private fun belovikSquareButton(big: Boolean, onTap: () -> Unit): View {
+    private fun agolosSquareButton(big: Boolean, onTap: () -> Unit): View {
         val size = if (big) dp(56) else dp(44)
         val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
@@ -496,7 +496,7 @@ class OverlayController(private val service: WisprService) {
             setOnClickListener { onTap() }
         }
         val icon = ImageView(ctx).apply {
-            setImageResource(R.drawable.ic_belovik_b)
+            setImageResource(R.drawable.ic_agolos_a)
             setColorFilter(0xFFF22A37.toInt()) // signal red
             scaleType = ImageView.ScaleType.FIT_CENTER
             val pad = if (big) dp(12) else dp(10)
@@ -651,7 +651,7 @@ class OverlayController(private val service: WisprService) {
     private fun copyToClipboard(text: String) {
         val cm = ctx.getSystemService(Context.CLIPBOARD_SERVICE)
             as android.content.ClipboardManager
-        cm.setPrimaryClip(android.content.ClipData.newPlainText("wispr-alt", text))
+        cm.setPrimaryClip(android.content.ClipData.newPlainText("А-ГОЛОС", text))
     }
 
     // ─── PCM → WAV ─────────────────────────────────────────────────────────

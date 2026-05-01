@@ -331,7 +331,7 @@ pub fn run() {
             current_hotkey: Mutex::new(None),
         })
         // single-instance MUST be the first plugin: when a second copy of
-        // the app is launched (e.g. user clicks belovik://auth from a
+        // the app is launched (e.g. user clicks agolos://auth from a
         // browser), this routes the URL to the running instance instead
         // of spawning a duplicate.
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
@@ -357,25 +357,25 @@ pub fn run() {
             // post-migration launches.
             settings::migrate_auth_to_keychain(&app.handle());
 
-            // Register the belovik:// scheme at runtime. Bundled releases
+            // Register the agolos:// scheme at runtime. Bundled releases
             // get this through Info.plist / WiX / .desktop files generated
             // by tauri build, but dev mode (`bun tauri dev`) needs explicit
             // registration to receive deep links. Cheap no-op when already
             // registered.
             #[cfg(any(target_os = "linux", target_os = "windows"))]
             {
-                let _ = app.deep_link().register("belovik");
+                let _ = app.deep_link().register("agolos");
             }
 
             // Magic-link deep links. When the user clicks the email's
-            // belovik://auth?token=…&email=… URL we save the session and
+            // agolos://auth?token=…&email=… URL we save the session and
             // emit "auth-deep-link" so the JS layer flips out of the
             // login gate. Both fresh-launch and already-running cases
             // funnel through this same callback.
             let app_for_dl = app.handle().clone();
             app.deep_link().on_open_url(move |event| {
                 for url in event.urls() {
-                    if url.scheme() != "belovik" || url.host_str() != Some("auth") {
+                    if url.scheme() != "agolos" || url.host_str() != Some("auth") {
                         continue;
                     }
                     let mut token: Option<String> = None;
@@ -446,7 +446,7 @@ pub fn run() {
                 "overlay",
                 WebviewUrl::App("overlay.html".into()),
             )
-            .title("wispr-alt")
+            .title("А-ГОЛОС")
             .decorations(false)
             .transparent(true)
             .always_on_top(true)

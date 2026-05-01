@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.content.Context
 import android.content.SharedPreferences
@@ -15,8 +15,8 @@ import androidx.security.crypto.MasterKey
  * plain prefs on first read after upgrade.
  */
 object AuthStore {
-    private const val LEGACY_PREFS = "wispr-alt-auth"
-    private const val ENC_PREFS = "wispr-alt-auth-enc"
+    private const val LEGACY_PREFS = "agolos-auth"
+    private const val ENC_PREFS = "agolos-auth-enc"
     private const val KEY_TOKEN = "token"
     private const val KEY_EMAIL = "email"
     private const val TAG = "AuthStore"

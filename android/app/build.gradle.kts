@@ -48,11 +48,11 @@ val haveCustomKeystore = listOf(ksPath, ksPassword, ksAlias, ksKeyPassword)
     .all { !it.isNullOrBlank() }
 
 android {
-    namespace = "com.wispralt.keyboard"
+    namespace = "app.agolos"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.wispralt.keyboard"
+        applicationId = "app.agolos"
         minSdk = 26
         targetSdk = 34
         versionCode = 18

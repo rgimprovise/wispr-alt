@@ -18,18 +18,18 @@ struct SetPasswordView: View {
 
     var body: some View {
         ZStack {
-            BelovikColor.paper.ignoresSafeArea()
+            AgolosColor.paper.ignoresSafeArea()
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 16) {
                     Text(hasExistingPassword ? "Сменить пароль" : "Установить пароль")
-                        .font(.belovikDisplay(32))
-                        .foregroundStyle(BelovikColor.textPrimary)
+                        .font(.agolosDisplay(32))
+                        .foregroundStyle(AgolosColor.textPrimary)
                         .padding(.top, 24)
 
                     Text("Минимум 8 символов. Используется для быстрого входа без кода из почты.")
-                        .font(.belovikUI(14))
-                        .foregroundStyle(BelovikColor.textSecondary)
+                        .font(.agolosUI(14))
+                        .foregroundStyle(AgolosColor.textSecondary)
 
                     if loadingState {
                         ProgressView().padding(.vertical, 32)
@@ -55,7 +55,7 @@ struct SetPasswordView: View {
 
             if let msg = errorMessage {
                 Text(msg)
-                    .font(.belovikUI(13))
+                    .font(.agolosUI(13))
                     .foregroundStyle(Color(red: 185/255, green: 69/255, blue: 69/255))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -67,7 +67,7 @@ struct SetPasswordView: View {
             }
             if let msg = successMessage {
                 Text(msg)
-                    .font(.belovikUI(13))
+                    .font(.agolosUI(13))
                     .foregroundStyle(Color(red: 74/255, green: 122/255, blue: 92/255))
                     .padding(.horizontal, 12)
                     .padding(.vertical, 10)
@@ -80,18 +80,18 @@ struct SetPasswordView: View {
 
             Button(action: submit) {
                 Text(inFlight ? "Сохраняем…" : "Сохранить")
-                    .font(.belovikUI(15, weight: .semibold))
-                    .foregroundStyle(BelovikColor.textInverse)
+                    .font(.agolosUI(15, weight: .semibold))
+                    .foregroundStyle(AgolosColor.textInverse)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 16)
-                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 14))
+                    .background(AgolosColor.graphite, in: RoundedRectangle(cornerRadius: 14))
             }
             .disabled(inFlight || newPassword.count < 8)
             .opacity(inFlight ? 0.6 : 1)
 
             Button("Назад") { dismiss() }
-                .font(.belovikUI(14))
-                .foregroundStyle(BelovikColor.textSecondary)
+                .font(.agolosUI(14))
+                .foregroundStyle(AgolosColor.textSecondary)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 12)
         }
@@ -105,13 +105,13 @@ struct SetPasswordView: View {
         SecureField(label, text: text)
             .textFieldStyle(.plain)
             .textContentType(content)
-            .font(.belovikUI(16))
-            .foregroundStyle(BelovikColor.textPrimary)
+            .font(.agolosUI(16))
+            .foregroundStyle(AgolosColor.textPrimary)
             .padding(14)
-            .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
+            .background(AgolosColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
             .overlay(
                 RoundedRectangle(cornerRadius: 14)
-                    .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                    .stroke(AgolosColor.borderSubtle, lineWidth: 1)
             )
     }
 

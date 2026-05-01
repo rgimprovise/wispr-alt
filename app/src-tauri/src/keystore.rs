@@ -9,7 +9,7 @@
 
 use keyring::Entry;
 
-const SERVICE: &str = "com.wispralt.app";
+const SERVICE: &str = "app.agolos";
 const KEY_TOKEN: &str = "auth_token";
 const KEY_EMAIL: &str = "auth_email";
 

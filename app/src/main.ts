@@ -279,7 +279,7 @@ window.addEventListener("DOMContentLoaded", async () => {
   setStatus("idle");
   wireAuth();
 
-  // belovik://auth?token=…&email=… — Rust persisted the session before
+  // agolos://auth?token=…&email=… — Rust persisted the session before
   // emitting; we just refresh in-memory state and swap surfaces.
   listen("auth-deep-link", (event) => {
     const payload = event.payload as { token: string; email: string };
@@ -316,7 +316,7 @@ async function initMainApp() {
       log("accessibility: OK");
     } else {
       log(
-        "accessibility: NOT GRANTED — System Settings → Privacy & Security → Accessibility → add wispr-alt → restart app"
+        "accessibility: NOT GRANTED — System Settings → Privacy & Security → Accessibility → add А-ГОЛОС → restart app"
       );
     }
   } catch (err) {
@@ -338,7 +338,7 @@ async function initMainApp() {
 
   document.querySelector("#test-paste")?.addEventListener("click", async () => {
     try {
-      await invoke("paste", { text: "wispr-alt test injection ✓" });
+      await invoke("paste", { text: "А-ГОЛОС test injection ✓" });
       log("paste invoked");
     } catch (err) {
       log(`paste failed: ${err}`);

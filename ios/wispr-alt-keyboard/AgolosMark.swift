@@ -4,10 +4,10 @@ import UIKit
 /// Path extracted from RodchenkoC SHA glyph for «А» — exact match to
 /// brand/logo/svg/letter-a.svg.
 ///
-/// Type name kept as `BelovikMark` for backward compat with existing
+/// Type name kept as `AgolosMark` for backward compat with existing
 /// keyboard call sites; will be renamed in a follow-up B2 pass alongside
 /// bundle id / URL scheme migration.
-enum BelovikMark {
+enum AgolosMark {
     /// Draws a square UIImage with the «А» mark filled in `color`.
     static func image(size: CGSize, color: UIColor) -> UIImage {
         let renderer = UIGraphicsImageRenderer(size: size)

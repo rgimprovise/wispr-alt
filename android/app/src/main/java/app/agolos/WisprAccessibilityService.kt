@@ -1,4 +1,4 @@
-package com.wispralt.keyboard
+package app.agolos
 
 import android.accessibilityservice.AccessibilityService
 import android.os.Bundle
@@ -95,7 +95,7 @@ class WisprAccessibilityService : AccessibilityService() {
         }
         val clipboard = applicationContext.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
             as android.content.ClipboardManager
-        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("wispr-alt", text))
+        clipboard.setPrimaryClip(android.content.ClipData.newPlainText("А-ГОЛОС", text))
 
         val pasted = node.performAction(AccessibilityNodeInfo.ACTION_PASTE)
         if (pasted) return true

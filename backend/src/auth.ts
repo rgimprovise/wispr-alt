@@ -127,7 +127,7 @@ auth.get("/verify-link", async (c) => {
   const jwt = mintJwt(user.id, user.email);
 
   const deepLink =
-    `belovik://auth?token=${encodeURIComponent(jwt)}` +
+    `agolos://auth?token=${encodeURIComponent(jwt)}` +
     `&email=${encodeURIComponent(user.email)}`;
   return c.html(`<!doctype html>
 <html><head><meta charset="utf-8"><title>А-ГОЛОС — вход</title>

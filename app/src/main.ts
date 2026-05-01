@@ -164,6 +164,7 @@ async function tickSnapshot() {
 }
 
 async function startRecording() {
+  log("startRecording: enter");
   try {
     lastPartial = "";
     snapshotSeq = 0;
@@ -171,23 +172,23 @@ async function startRecording() {
     streamUsable = false;
     streamWs = null;
 
-    // Try to open the streaming WebSocket. Success → Rust starts in
-    // streaming mode (100ms tick) and we forward PCM frames to the
-    // backend proxy. Failure to open → fall back to legacy snapshot
-    // pattern with a slow tick + per-snapshot HTTP POSTs.
+    log("startRecording: opening WS");
     const ws = await openStreamWs().catch((err) => {
-      log(`stream WS failed to open: ${err}; falling back to HTTP snapshots`);
+      log(`stream WS failed: ${err}`);
       return null;
     });
+    log(`startRecording: WS result = ${ws ? "OPEN" : "NULL"}`);
     streamWs = ws;
     streamUsable = ws !== null;
 
+    log("startRecording: invoke start_recording");
     await invoke("start_recording", { streaming: streamUsable });
+    log("startRecording: setStatus recording");
     setStatus("recording");
     await setOverlayVisible(true);
     log(streamUsable ? "recording started (streaming)" : "recording started (snapshot)");
   } catch (err) {
-    log(`start failed: ${err}`);
+    log(`startRecording FAILED: ${err}`);
     setStatus("idle");
     closeStreamWs();
   }
@@ -228,6 +229,7 @@ function openStreamWs(): Promise<WebSocket> {
       try { data = JSON.parse(ev.data as string); } catch { return; }
       switch (data.type) {
         case "ready":
+          log("WS: ready");
           if (!settled) {
             settled = true;
             clearTimeout(timeout);
@@ -236,6 +238,7 @@ function openStreamWs(): Promise<WebSocket> {
           break;
         case "partial":
           lastPartial = data.text ?? "";
+          log(`WS partial: ${lastPartial.slice(0, 50)}`);
           if (state === "recording") updateOverlay("recording", lastPartial);
           break;
         case "final_clean":

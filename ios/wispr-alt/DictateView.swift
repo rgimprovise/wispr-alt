@@ -13,6 +13,7 @@ struct DictateView: View {
 
     @StateObject private var recorder = AudioRecorder()
     @StateObject private var styleStore = StyleStore()
+    @EnvironmentObject private var auth: AuthStore
     @State private var state: Phase = .idle
     @State private var showingStylePicker = false
 
@@ -203,6 +204,10 @@ struct DictateView: View {
                     SharedStorage.savePendingTranscript(text)
                     state = .done(text)
                 }
+            } catch is Backend.AuthExpired {
+                // Backend already cleared the persisted token; sync the
+                // observable so RootView swaps to LoginView.
+                await MainActor.run { auth.clear() }
             } catch {
                 await MainActor.run { state = .error("\(error)") }
             }

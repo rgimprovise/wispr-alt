@@ -3,6 +3,7 @@ import AVFoundation
 
 struct OnboardingView: View {
     @State private var micGranted = false
+    @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
         ZStack {
@@ -51,6 +52,10 @@ struct OnboardingView: View {
                     Spacer().frame(height: 16)
 
                     instructionsCard
+
+                    Spacer().frame(height: 16)
+
+                    accountCard
 
                     Spacer().frame(height: 40)
                 }
@@ -130,6 +135,34 @@ struct OnboardingView: View {
         }
         .padding(20)
         .background(BelovikColor.surfaceMint, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+    }
+
+    private var accountCard: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Аккаунт")
+                .font(.belovikUI(14, weight: .bold))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .textCase(.uppercase)
+                .tracking(0.6)
+            Text(auth.email ?? "—")
+                .font(.belovikUI(15))
+                .foregroundStyle(BelovikColor.textSecondary)
+            Button("Выйти") {
+                auth.clear()
+            }
+            .font(.belovikUI(14, weight: .semibold))
+            .foregroundStyle(BelovikColor.textPrimary)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: BelovikRadius.lg)
+                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+        )
     }
 
     private func refreshMicStatus() {

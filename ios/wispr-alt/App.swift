@@ -3,11 +3,13 @@ import SwiftUI
 @main
 struct WisprAltApp: App {
     @StateObject private var router = Router()
+    @StateObject private var auth = AuthStore()
 
     var body: some Scene {
         WindowGroup {
             RootView()
                 .environmentObject(router)
+                .environmentObject(auth)
                 .onOpenURL { router.handleDeepLink($0) }
         }
     }
@@ -30,11 +32,18 @@ final class Router: ObservableObject {
 
 struct RootView: View {
     @EnvironmentObject var router: Router
+    @EnvironmentObject var auth: AuthStore
 
     var body: some View {
-        switch router.screen {
-        case .onboarding: OnboardingView()
-        case .dictate:    DictateView()
+        // Auth gate: until a JWT exists, show LoginView. Everything else
+        // (deep-link routing, onboarding) sits behind it.
+        if !auth.isSignedIn {
+            LoginView()
+        } else {
+            switch router.screen {
+            case .onboarding: OnboardingView()
+            case .dictate:    DictateView()
+            }
         }
     }
 }

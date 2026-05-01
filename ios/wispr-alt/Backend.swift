@@ -8,6 +8,10 @@ enum Backend {
             ?? "https://alrcvscribe.n8nrgimprovise.space"
     }
 
+    /// Thrown when the backend returns 401. The caller should drop the
+    /// session via AuthSession.clear() and route the user to LoginView.
+    struct AuthExpired: Error {}
+
     /// POSTs the WAV to /transcribe with the given cleanup style and returns
     /// the cleaned transcript. Default style is `.clean`.
     static func transcribe(
@@ -15,11 +19,15 @@ enum Backend {
         style: DictationStyle = .clean,
         language: String = "ru"
     ) async throws -> String {
+        guard let token = AuthSession.token else {
+            throw AuthExpired()
+        }
         let endpoint = URL(string: "\(url)/transcribe")!
         let boundary = "----wispr-\(UUID().uuidString)"
 
         var req = URLRequest(url: endpoint)
         req.httpMethod = "POST"
+        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         req.setValue(
             "multipart/form-data; boundary=\(boundary)",
             forHTTPHeaderField: "Content-Type"
@@ -49,6 +57,10 @@ enum Backend {
         req.httpBody = body
 
         let (data, resp) = try await URLSession.shared.data(for: req)
+        if let http = resp as? HTTPURLResponse, http.statusCode == 401 {
+            AuthSession.clear()
+            throw AuthExpired()
+        }
         guard let http = resp as? HTTPURLResponse, http.statusCode == 200 else {
             let snippet = String(data: data, encoding: .utf8) ?? "(non-utf8)"
             throw NSError(

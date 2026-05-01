@@ -215,6 +215,18 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
  * Whether the text is too short / trivial to bother sending to LLM.
  * Saves ~1-2s round-trip latency on quick "yes/no/ok" dictations.
  */
+/**
+ * Public cleanup helper used by both the HTTP /transcribe handler and
+ * the streaming proxy. Mirrors the postprocess branch of `transcribe()`.
+ */
+export async function postprocessText(raw: string, style: Style): Promise<string> {
+  if (raw.length === 0) return raw;
+  if (shouldSkipCleanup(raw)) return quickNormalize(raw);
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+  return cleanWithGpt(raw, apiKey, style);
+}
+
 function shouldSkipCleanup(text: string): boolean {
   const words = text.split(/\s+/).filter(Boolean);
   if (words.length <= 3) return true;

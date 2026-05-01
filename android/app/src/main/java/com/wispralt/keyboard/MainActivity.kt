@@ -1,6 +1,7 @@
 package com.wispralt.keyboard
 
 import android.Manifest
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
@@ -40,6 +41,15 @@ class MainActivity : AppCompatActivity() {
 
     private var currentStep = Step.WELCOME
 
+    /**
+     * Tri-state cache of whether the signed-in user has a password set.
+     * null = haven't checked yet (don't show the banner — would flicker
+     * on cold launch). false = confirmed no password → show banner.
+     * true = confirmed set → hide banner.
+     * Refreshed on resume via /auth/check-email.
+     */
+    @Volatile private var passwordIsSet: Boolean? = null
+
     private fun col(id: Int): Int = ContextCompat.getColor(this, id)
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -63,7 +73,27 @@ class MainActivity : AppCompatActivity() {
             finish()
             return
         }
+        refreshPasswordStatus()
         renderForState()
+    }
+
+    /**
+     * Background fetch of /auth/check-email to populate [passwordIsSet],
+     * then re-render the home screen if the value changed (so the
+     * "set password" banner appears/disappears without a flash).
+     */
+    private fun refreshPasswordStatus() {
+        val email = AuthStore.email(this) ?: return
+        Thread {
+            val res = AuthClient.checkEmail(email)
+            if (res is AuthClient.Result.Ok) {
+                val updated = res.value.hasPassword
+                if (passwordIsSet != updated) {
+                    passwordIsSet = updated
+                    runOnUiThread { if (!isFinishing) renderForState() }
+                }
+            }
+        }.start()
     }
 
     override fun onRequestPermissionsResult(
@@ -316,6 +346,8 @@ class MainActivity : AppCompatActivity() {
         c.addView(accountCard())
         c.addView(spacer(dp(16)))
 
+        maybeAddSetPasswordBanner(c)
+
         if (!hasMic()) c.addView(gateBanner(
             "Микрофон не разрешён",
             "Без доступа к микрофону приложение не сможет записывать голос.",
@@ -395,6 +427,62 @@ class MainActivity : AppCompatActivity() {
             }
         })
         return card
+    }
+
+    private fun maybeAddSetPasswordBanner(c: LinearLayout) {
+        // Only render once we know for sure: null = unchecked → silence,
+        // true = set → silence, false = need to suggest setting one.
+        if (passwordIsSet != false) return
+        val prefs = getSharedPreferences("wispr-alt-ui", Context.MODE_PRIVATE)
+        if (prefs.getBoolean("setPasswordBannerDismissed", false)) return
+
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(18), dp(20), dp(18))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = dp(16).toFloat()
+                setColor(col(R.color.surface_mint))
+                setStroke(dp(1), col(R.color.border_subtle))
+            }
+        }
+        card.addView(TextView(this).apply {
+            text = "Установите пароль"
+            setTextColor(col(R.color.text_primary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 15f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        card.addView(spacer(dp(4)))
+        card.addView(TextView(this).apply {
+            text = "В следующий раз войдёте без кода из почты."
+            setTextColor(col(R.color.text_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+            setLineSpacing(0f, 1.4f)
+        })
+        card.addView(spacer(dp(12)))
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+        }
+        val setBtn = primaryButton("Установить") {
+            startActivity(Intent(this, SetPasswordActivity::class.java))
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f).apply {
+                marginEnd = dp(8)
+            }
+        }
+        val laterBtn = secondaryButton("Позже") {
+            prefs.edit().putBoolean("setPasswordBannerDismissed", true).apply()
+            renderForState()
+        }.apply {
+            layoutParams = LinearLayout.LayoutParams(0, dp(46), 1f)
+        }
+        row.addView(setBtn)
+        row.addView(laterBtn)
+        card.addView(row)
+
+        c.addView(card)
+        c.addView(spacer(dp(16)))
     }
 
     private fun accountCard(): View {

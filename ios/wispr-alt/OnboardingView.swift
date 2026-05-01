@@ -4,6 +4,8 @@ import AVFoundation
 struct OnboardingView: View {
     @State private var micGranted = false
     @State private var showingSetPassword = false
+    @State private var passwordIsSet: Bool? = nil
+    @AppStorage("setPasswordBannerDismissed") private var bannerDismissed = false
     @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
@@ -22,6 +24,10 @@ struct OnboardingView: View {
                         .foregroundStyle(BelovikColor.textSecondary)
 
                     Spacer().frame(height: 8)
+
+                    if passwordIsSet == false && !bannerDismissed {
+                        setPasswordBanner
+                    }
 
                     stepCard(
                         index: 1,
@@ -63,10 +69,62 @@ struct OnboardingView: View {
                 .padding(.horizontal, 24)
             }
         }
-        .onAppear { refreshMicStatus() }
-        .sheet(isPresented: $showingSetPassword) {
+        .onAppear {
+            refreshMicStatus()
+            Task { await refreshPasswordStatus() }
+        }
+        .sheet(isPresented: $showingSetPassword, onDismiss: {
+            Task { await refreshPasswordStatus() }
+        }) {
             SetPasswordView()
                 .environmentObject(auth)
+        }
+    }
+
+    private var setPasswordBanner: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Установите пароль")
+                .font(.belovikUI(15, weight: .semibold))
+                .foregroundStyle(BelovikColor.textPrimary)
+            Text("В следующий раз войдёте без кода из почты.")
+                .font(.belovikUI(13))
+                .foregroundStyle(BelovikColor.textSecondary)
+            HStack(spacing: 8) {
+                Button("Установить") { showingSetPassword = true }
+                    .font(.belovikUI(13, weight: .semibold))
+                    .foregroundStyle(BelovikColor.textInverse)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 12))
+                Button("Позже") { bannerDismissed = true }
+                    .font(.belovikUI(13, weight: .semibold))
+                    .foregroundStyle(BelovikColor.textPrimary)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 10)
+                    .background(BelovikColor.surface, in: RoundedRectangle(cornerRadius: 12))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                    )
+            }
+            .padding(.top, 4)
+        }
+        .padding(20)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(BelovikColor.surfaceMint, in: RoundedRectangle(cornerRadius: BelovikRadius.lg))
+        .overlay(
+            RoundedRectangle(cornerRadius: BelovikRadius.lg)
+                .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+        )
+    }
+
+    private func refreshPasswordStatus() async {
+        guard let email = auth.email else { return }
+        do {
+            let status = try await AuthClient.checkEmail(email: email)
+            await MainActor.run { passwordIsSet = status.hasPassword }
+        } catch {
+            // leave nil — banner stays hidden until we know for sure
         }
     }
 

@@ -45,7 +45,10 @@ fn start_recording(
     let (event, period) = if stream {
         ("stream-pull-tick", std::time::Duration::from_millis(100))
     } else {
-        ("snapshot-tick", std::time::Duration::from_secs(2))
+        // 1 s tick gives partial-text refresh at ~1.5–2 s latency
+        // (1 s tick + ~700 ms HTTP transcription on the rolling 5 s
+        // window). 2 s was the v0.3 default, but felt sluggish.
+        ("snapshot-tick", std::time::Duration::from_secs(1))
     };
     let app_clone = app.clone();
     std::thread::spawn(move || loop {
@@ -69,6 +72,16 @@ fn stop_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
 #[tauri::command]
 fn snapshot_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
     state.recorder.lock().unwrap().snapshot_wav()
+}
+
+/// Last `seconds` of audio as WAV. Live-preview ticker uses this with a
+/// 5-second window so partials don't slow down on long recordings.
+#[tauri::command]
+fn snapshot_recent(
+    state: tauri::State<AppState>,
+    seconds: u32,
+) -> Result<Vec<u8>, String> {
+    state.recorder.lock().unwrap().snapshot_recent_wav(seconds)
 }
 
 /// Returns new mic samples since the previous call as PCM16 mono 16 kHz
@@ -464,6 +477,7 @@ pub fn run() {
             start_recording,
             stop_recording,
             snapshot_recording,
+            snapshot_recent,
             pull_pcm16_chunk,
             is_recording,
             paste,

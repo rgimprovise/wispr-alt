@@ -76,25 +76,9 @@ function updateOverlay(s: RecordingState, text: string) {
 // round-trip per request. Updated by signIn() / signOut().
 let authToken: string | null = null;
 
-// ─── Streaming transcription state ─────────────────────────────────────────
-
-/**
- * Active /transcribe-stream WebSocket, or null when not streaming. The
- * stream-pull-tick handler checks this; a non-null + OPEN ws means we're
- * actively forwarding PCM16 chunks to the backend proxy.
- */
-let streamWs: WebSocket | null = null;
-/**
- * Set to false the moment the WS errors out so stopAndFinalize knows to
- * fall back to the HTTP /transcribe path instead of waiting for a
- * final_clean that won't arrive.
- */
-let streamUsable = false;
-/**
- * Resolved by the WS message handler when `{type:"final_clean"}` arrives.
- * Awaited in stopAndFinalize after the commit.
- */
-let onStreamFinalClean: ((text: string) => void) | null = null;
+// True streaming via /transcribe-stream WS exists in the backend but is
+// not used from desktop right now — see stopAndFinalize for the snapshot
+// pattern (rolling 5-second window, 1 s tick, full WAV on stop).
 
 async function authedFetch(path: string, init: RequestInit): Promise<Response> {
   if (!authToken) throw new Error("not signed in");
@@ -146,15 +130,19 @@ async function tickSnapshot() {
   snapshotInFlight = true;
   const mySeq = ++snapshotSeq;
   try {
-    const wav = (await invoke("snapshot_recording")) as number[];
-    log(`snapshot: ${wav.length} bytes, posting…`);
+    // Rolling 5-second window — bounded payload size keeps each
+    // /transcribe HTTP round-trip under ~700 ms even on long recordings.
+    // Final transcription on stop uses the full buffer for context.
+    const wav = (await invoke("snapshot_recent", { seconds: 5 })) as number[];
+    if (wav.length < 4000) {
+      // Less than ~125 ms of audio — skip until something to transcribe.
+      return;
+    }
     const text = await transcribePartial(wav);
     if (mySeq === snapshotSeq && state === "recording" && text) {
       lastPartial = text;
       updateOverlay("recording", text);
       log(`partial: "${text.slice(0, 60)}"`);
-    } else if (!text) {
-      log(`partial: (empty, wav too short?)`);
     }
   } catch (err) {
     log(`snapshot failed: ${err}`);
@@ -164,48 +152,26 @@ async function tickSnapshot() {
 }
 
 async function startRecording() {
-  log("startRecording: enter");
   try {
     // Recover from a desynced state where Rust thinks it's recording
-    // (e.g. leaked from a prior HMR run or a crashed teardown) but the
-    // JS UI is back at idle. Force-stop, ignore the result.
+    // but the JS UI is back at idle (HMR leftovers, prior crash, etc).
     try {
-      const wasRecording = (await invoke("is_recording")) as boolean;
-      if (wasRecording) {
-        log("startRecording: clearing stale Rust recording");
+      if ((await invoke("is_recording")) as boolean) {
         try { await invoke("stop_recording"); } catch { /* ignore */ }
       }
     } catch { /* ignore */ }
 
-    // Close any leaked stream WS from prior failed attempts.
-    closeStreamWs();
-
     lastPartial = "";
     snapshotSeq = 0;
     snapshotInFlight = false;
-    streamUsable = false;
-    streamWs = null;
 
-    log("startRecording: opening WS");
-    const ws = await openStreamWs().catch((err) => {
-      log(`stream WS failed: ${err}`);
-      return null;
-    });
-    log(`startRecording: WS result = ${ws ? "OPEN" : "NULL"}`);
-    streamWs = ws;
-    streamUsable = ws !== null;
-
-    log("startRecording: invoke start_recording");
-    await invoke("start_recording", { streaming: streamUsable });
-    log("startRecording: setStatus recording");
+    await invoke("start_recording", { streaming: false });
     setStatus("recording");
     await setOverlayVisible(true);
-    log(streamUsable ? "recording started (streaming)" : "recording started (snapshot)");
+    log("recording started");
   } catch (err) {
-    log(`startRecording FAILED: ${err}`);
+    log(`start failed: ${err}`);
     setStatus("idle");
-    closeStreamWs();
-    // Make sure Rust isn't left recording so the next press starts clean.
     try { await invoke("stop_recording"); } catch { /* noop */ }
   }
 }
@@ -215,93 +181,9 @@ async function startRecording() {
  * server emits `{type:"ready"}` (i.e. the OpenAI handshake is done and
  * we can start sending audio). Rejects on early close or 2 s timeout.
  */
-function openStreamWs(): Promise<WebSocket> {
-  return new Promise(async (resolve, reject) => {
-    if (!authToken) {
-      reject(new Error("not signed in"));
-      return;
-    }
-    let style = "clean";
-    try {
-      style = ((await invoke("get_style")) as string) || "clean";
-    } catch { /* default */ }
-    const wsUrl =
-      BACKEND_URL.replace(/^http/, "ws") +
-      `/transcribe-stream?token=${encodeURIComponent(authToken)}` +
-      `&style=${encodeURIComponent(style)}&language=ru`;
-    const ws = new WebSocket(wsUrl);
-    ws.binaryType = "arraybuffer";
-    let settled = false;
-    const timeout = setTimeout(() => {
-      if (!settled) {
-        settled = true;
-        try { ws.close(); } catch { /* noop */ }
-        reject(new Error("WS open timeout"));
-      }
-    }, 2000);
-
-    ws.addEventListener("message", (ev) => {
-      let data: any;
-      try { data = JSON.parse(ev.data as string); } catch { return; }
-      switch (data.type) {
-        case "ready":
-          log("WS: ready");
-          if (!settled) {
-            settled = true;
-            clearTimeout(timeout);
-            resolve(ws);
-          }
-          break;
-        case "partial":
-          lastPartial = data.text ?? "";
-          log(`WS partial: ${lastPartial.slice(0, 50)}`);
-          if (state === "recording") updateOverlay("recording", lastPartial);
-          break;
-        case "final_clean":
-          onStreamFinalClean?.(data.text ?? "");
-          break;
-        case "error":
-          log(`stream error: ${data.message}`);
-          streamUsable = false;
-          // 1008 = unauthorized — same handling as HTTP 401.
-          if (String(data.message ?? "").includes("unauthorized")) {
-            void signOut();
-          }
-          break;
-      }
-    });
-    ws.addEventListener("error", () => {
-      streamUsable = false;
-      if (!settled) {
-        settled = true;
-        clearTimeout(timeout);
-        reject(new Error("WS error"));
-      }
-    });
-    ws.addEventListener("close", () => {
-      streamUsable = false;
-      if (!settled) {
-        settled = true;
-        clearTimeout(timeout);
-        reject(new Error("WS closed before ready"));
-      }
-    });
-  });
-}
-
-function closeStreamWs() {
-  if (streamWs) {
-    try { streamWs.close(); } catch { /* noop */ }
-    streamWs = null;
-  }
-  streamUsable = false;
-  onStreamFinalClean = null;
-}
-
 async function stopAndFinalize() {
   try {
-    // invalidate any pending snapshot responses
-    snapshotSeq++;
+    snapshotSeq++; // invalidate any pending snapshot responses
 
     setStatus("transcribing", lastPartial ? `preview: ${lastPartial.slice(0, 40)}` : undefined);
     const wav = (await invoke("stop_recording")) as number[];
@@ -309,27 +191,13 @@ async function stopAndFinalize() {
 
     if (wav.length < 4000) {
       log("too short — skipping");
-      closeStreamWs();
       await setOverlayVisible(false);
       setStatus("idle");
       return;
     }
 
     const t0 = performance.now();
-    let clean: string | null = null;
-
-    // Streaming path: ask backend to commit the upstream buffer; the
-    // server runs cleanup and replies with {type:"final_clean"}. Falls
-    // back to the HTTP /transcribe pipeline if the WS errored mid-flow
-    // or the final never arrives within the timeout.
-    if (streamWs && streamWs.readyState === WebSocket.OPEN && streamUsable) {
-      clean = await waitForStreamFinalClean(streamWs, 8000);
-      if (clean === null) log("stream final timed out; falling back to HTTP");
-    }
-    if (clean === null) {
-      clean = await transcribeFinal(wav);
-    }
-
+    const clean = await transcribeFinal(wav);
     const dt = Math.round(performance.now() - t0);
     log(`final transcribed in ${dt}ms: "${clean.slice(0, 80)}"`);
 
@@ -340,35 +208,13 @@ async function stopAndFinalize() {
       // confirmation of what was inserted before the overlay slides out.
       await new Promise((r) => setTimeout(r, 600));
     }
-    closeStreamWs();
     await setOverlayVisible(false);
     setStatus("idle");
   } catch (err) {
     log(`transcribe failed: ${err}`);
-    closeStreamWs();
     await setOverlayVisible(false);
     setStatus("idle");
   }
-}
-
-/**
- * Sends `{type:"commit"}` to the streaming WS and resolves with the
- * cleaned transcript when the server replies, or null on timeout / error.
- */
-function waitForStreamFinalClean(ws: WebSocket, timeoutMs: number): Promise<string | null> {
-  return new Promise((resolve) => {
-    let settled = false;
-    const finish = (text: string | null) => {
-      if (settled) return;
-      settled = true;
-      onStreamFinalClean = null;
-      clearTimeout(timer);
-      resolve(text);
-    };
-    onStreamFinalClean = (text) => finish(text);
-    const timer = setTimeout(() => finish(null), timeoutMs);
-    try { ws.send(JSON.stringify({ type: "commit" })); } catch { finish(null); }
-  });
 }
 
 async function onHotkey() {
@@ -386,11 +232,11 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   // belovik://auth?token=…&email=… — Rust persisted the session before
   // emitting; we just refresh in-memory state and swap surfaces.
-  listen("auth-deep-link", async (event) => {
+  listen("auth-deep-link", (event) => {
     const payload = event.payload as { token: string; email: string };
     authToken = payload.token;
     showMain(payload.email);
-    initMainApp();
+    void initMainApp();
   });
 
   // Decide which surface to show: signed-in user → main app; otherwise
@@ -439,19 +285,6 @@ async function initMainApp() {
       tickSnapshot();
     });
 
-    // Streaming PCM tick — Rust emits every 100ms while recording in
-    // streaming mode. Pull the new bytes and forward as a binary WS frame.
-    listen("stream-pull-tick", async () => {
-      if (state !== "recording") return;
-      if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
-      try {
-        const chunk = (await invoke("pull_pcm16_chunk")) as number[];
-        if (chunk.length === 0) return;
-        streamWs.send(new Uint8Array(chunk).buffer);
-      } catch (err) {
-        log(`pull_pcm16_chunk failed: ${err}`);
-      }
-    });
   }
 
   document.querySelector("#test-paste")?.addEventListener("click", async () => {

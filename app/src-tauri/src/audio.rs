@@ -162,6 +162,21 @@ impl Recorder {
         write_wav(&samples, self.sample_rate)
     }
 
+    /// Like `snapshot_wav` but encodes only the most recent `seconds` of
+    /// audio. Used by the live-preview ticker to keep payload size bounded
+    /// (and OpenAI latency low) on long recordings: re-transcribing 30 s
+    /// of audio every tick is much slower than re-transcribing the most
+    /// recent ~5 s window. Final transcription on stop still uses the
+    /// full buffer via `stop()`.
+    pub fn snapshot_recent_wav(&self, seconds: u32) -> Result<Vec<u8>, String> {
+        let buf = self.samples.lock().unwrap();
+        let want = (self.sample_rate as usize) * (seconds as usize);
+        let start = buf.len().saturating_sub(want);
+        let recent = buf[start..].to_vec();
+        drop(buf);
+        write_wav(&recent, self.sample_rate)
+    }
+
     /// Returns new mic samples since the last call, downsampled to
     /// 16 kHz mono PCM16 little-endian. Used by the streaming
     /// /transcribe-stream WS path on the JS side: poll every ~100 ms,

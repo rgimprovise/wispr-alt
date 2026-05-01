@@ -188,9 +188,15 @@ async function startRecording() {
     await setOverlayVisible(true);
     log(streamUsable ? "recording started (streaming)" : "recording started (snapshot)");
   } catch (err) {
-    log(`startRecording FAILED: ${err}`);
-    setStatus("idle");
-    closeStreamWs();
+    const msg = String(err);
+    log(`startRecording FAILED: ${msg}`);
+    // "already recording" = a duplicate startRecording fired (HMR or
+    // double-press). Rust is fine; don't clobber state back to idle or
+    // we'll cascade — the next press would call startRecording again.
+    if (!msg.includes("already recording")) {
+      setStatus("idle");
+      closeStreamWs();
+    }
   }
 }
 
@@ -390,6 +396,11 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
+// Track listener registration so Vite HMR re-runs of initMainApp don't
+// double-register `hotkey-pressed` / tick handlers (which causes
+// concurrent startRecording calls and the "already recording" cascade).
+let mainAppWired = false;
+
 async function initMainApp() {
   // Check Accessibility permission status and surface it to the log so the
   // user can tell at a glance if paste will work. The same call also
@@ -407,28 +418,31 @@ async function initMainApp() {
     log(`accessibility check failed: ${err}`);
   }
 
-  listen("hotkey-pressed", () => {
-    onHotkey();
-  });
+  if (!mainAppWired) {
+    mainAppWired = true;
+    listen("hotkey-pressed", () => {
+      onHotkey();
+    });
 
-  // Rust-driven snapshot ticker (immune to WKWebView background throttling).
-  listen("snapshot-tick", () => {
-    tickSnapshot();
-  });
+    // Rust-driven snapshot ticker (immune to WKWebView background throttling).
+    listen("snapshot-tick", () => {
+      tickSnapshot();
+    });
 
-  // Streaming PCM tick — Rust emits every 100ms while recording in
-  // streaming mode. Pull the new bytes and forward as a binary WS frame.
-  listen("stream-pull-tick", async () => {
-    if (state !== "recording") return;
-    if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
-    try {
-      const chunk = (await invoke("pull_pcm16_chunk")) as number[];
-      if (chunk.length === 0) return;
-      streamWs.send(new Uint8Array(chunk).buffer);
-    } catch (err) {
-      log(`pull_pcm16_chunk failed: ${err}`);
-    }
-  });
+    // Streaming PCM tick — Rust emits every 100ms while recording in
+    // streaming mode. Pull the new bytes and forward as a binary WS frame.
+    listen("stream-pull-tick", async () => {
+      if (state !== "recording") return;
+      if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
+      try {
+        const chunk = (await invoke("pull_pcm16_chunk")) as number[];
+        if (chunk.length === 0) return;
+        streamWs.send(new Uint8Array(chunk).buffer);
+      } catch (err) {
+        log(`pull_pcm16_chunk failed: ${err}`);
+      }
+    });
+  }
 
   document.querySelector("#test-paste")?.addEventListener("click", async () => {
     try {

@@ -170,12 +170,13 @@ async function tickSnapshot() {
   snapshotInFlight = true;
   const mySeq = ++snapshotSeq;
   try {
-    // Rolling 5-second window — bounded payload size keeps each
-    // /transcribe HTTP round-trip under ~700 ms even on long recordings.
-    // Final transcription on stop uses the full buffer for context.
-    const wav = (await invoke("snapshot_recent", { seconds: 5 })) as number[];
+    // Full buffer per tick: text in the overlay grows monotonically.
+    // A rolling window would be cheaper but produces a jarring "scroll"
+    // effect once the recording exceeds the window length — old words
+    // drop out as new ones come in. snapshotInFlight skips overlapping
+    // ticks if a long recording's transcription doesn't fit in 1 s.
+    const wav = (await invoke("snapshot_recording")) as number[];
     if (wav.length < 4000) {
-      // Less than ~125 ms of audio — skip until something to transcribe.
       return;
     }
     const text = await transcribePartial(wav);

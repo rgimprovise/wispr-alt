@@ -260,6 +260,9 @@ async function initMainApp() {
     await signOut();
   });
 
+  await refreshSetPasswordButton();
+  wireSetPasswordPanel();
+
   try {
     const current = (await invoke("get_hotkey")) as string;
     updateHotkeyUI(current);
@@ -292,21 +295,22 @@ function showMain(email: string): void {
   if (acc) acc.textContent = email;
 }
 
-function showAuthStep(step: "email" | "code"): void {
-  const emailStep = document.getElementById("auth-step-email");
-  const codeStep = document.getElementById("auth-step-code");
-  if (step === "email") {
-    emailStep?.removeAttribute("hidden");
-    codeStep?.setAttribute("hidden", "");
-    (document.getElementById("auth-email") as HTMLInputElement | null)?.focus();
-  } else {
-    emailStep?.setAttribute("hidden", "");
-    codeStep?.removeAttribute("hidden");
-    (document.getElementById("auth-code") as HTMLInputElement | null)?.focus();
+type AuthStep = "email" | "password" | "code";
+
+function showAuthStep(step: AuthStep): void {
+  const map: Record<AuthStep, [string, string]> = {
+    email: ["auth-step-email", "auth-email"],
+    password: ["auth-step-password", "auth-password"],
+    code: ["auth-step-code", "auth-code"],
+  };
+  for (const k of Object.keys(map) as AuthStep[]) {
+    document.getElementById(map[k][0])?.setAttribute("hidden", "");
   }
+  document.getElementById(map[step][0])?.removeAttribute("hidden");
+  (document.getElementById(map[step][1]) as HTMLInputElement | null)?.focus();
 }
 
-function showAuthError(target: "email" | "code", message: string): void {
+function showAuthError(target: AuthStep, message: string): void {
   const el = document.getElementById(`auth-${target}-error`);
   if (!el) return;
   el.textContent = message;
@@ -314,7 +318,7 @@ function showAuthError(target: "email" | "code", message: string): void {
 }
 
 function clearAuthErrors(): void {
-  for (const id of ["auth-email-error", "auth-code-error"]) {
+  for (const id of ["auth-email-error", "auth-password-error", "auth-code-error"]) {
     const el = document.getElementById(id);
     if (el) {
       el.textContent = "";
@@ -326,6 +330,9 @@ function clearAuthErrors(): void {
 function wireAuth(): void {
   let pendingEmail = "";
 
+  // Step 1 — submit email. Decide between password and OTP based on
+  // /auth/check-email response. Falls back to OTP on network error so
+  // the user is never blocked from signing in.
   const emailForm = document.getElementById("auth-email-form") as HTMLFormElement | null;
   emailForm?.addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -335,29 +342,86 @@ function wireAuth(): void {
     const email = input.value.trim().toLowerCase();
     if (!email) return;
     submit.disabled = true;
-    submit.textContent = "Отправляем…";
+    submit.textContent = "Проверяем…";
     try {
-      const res = await fetch(`${BACKEND_URL}/auth/request`, {
+      const res = await fetch(`${BACKEND_URL}/auth/check-email`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ email }),
       });
-      if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(body.error ?? `HTTP ${res.status}`);
-      }
+      const body = (await res.json().catch(() => ({}))) as {
+        exists?: boolean;
+        hasPassword?: boolean;
+        error?: string;
+      };
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
       pendingEmail = email;
-      const display = document.getElementById("auth-email-display");
-      if (display) display.textContent = email;
-      showAuthStep("code");
+      if (body.hasPassword) {
+        const display = document.getElementById("auth-password-email");
+        if (display) display.textContent = email;
+        showAuthStep("password");
+      } else {
+        await sendOtpAndShowCodeStep(email);
+      }
     } catch (err) {
       showAuthError("email", err instanceof Error ? err.message : String(err));
     } finally {
       submit.disabled = false;
-      submit.textContent = "Прислать код";
+      submit.textContent = "Продолжить";
     }
   });
 
+  // Step 2a — password login.
+  const passwordForm = document.getElementById("auth-password-form") as HTMLFormElement | null;
+  passwordForm?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    clearAuthErrors();
+    const input = document.getElementById("auth-password") as HTMLInputElement;
+    const submit = document.getElementById("auth-password-submit") as HTMLButtonElement;
+    const password = input.value;
+    if (!password) return;
+    submit.disabled = true;
+    submit.textContent = "Входим…";
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/login`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail, password }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        token?: string;
+        user?: { email: string };
+        error?: string;
+      };
+      if (!res.ok || !body.token || !body.user) {
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      input.value = "";
+      await completeSignIn(body.token, body.user.email);
+    } catch (err) {
+      showAuthError("password", err instanceof Error ? err.message : String(err));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Войти";
+    }
+  });
+
+  // "Войти по коду из почты" — OTP fallback for users who forgot their password.
+  document.getElementById("auth-use-code")?.addEventListener("click", async () => {
+    if (!pendingEmail) return;
+    clearAuthErrors();
+    await sendOtpAndShowCodeStep(pendingEmail);
+  });
+
+  document.getElementById("auth-back-from-password")?.addEventListener("click", () => {
+    pendingEmail = "";
+    clearAuthErrors();
+    const pwInput = document.getElementById("auth-password") as HTMLInputElement | null;
+    if (pwInput) pwInput.value = "";
+    showAuthStep("email");
+  });
+
+  // Step 2b — OTP code.
   const codeForm = document.getElementById("auth-code-form") as HTMLFormElement | null;
   codeForm?.addEventListener("submit", async (ev) => {
     ev.preventDefault();
@@ -385,13 +449,8 @@ function wireAuth(): void {
       if (!res.ok || !body.token || !body.user) {
         throw new Error(body.error ?? `HTTP ${res.status}`);
       }
-      authToken = body.token;
-      await invoke("set_auth_session", {
-        token: body.token,
-        email: body.user.email,
-      });
-      showMain(body.user.email);
-      initMainApp();
+      input.value = "";
+      await completeSignIn(body.token, body.user.email);
     } catch (err) {
       showAuthError("code", err instanceof Error ? err.message : String(err));
     } finally {
@@ -407,9 +466,44 @@ function wireAuth(): void {
     if (codeInput) codeInput.value = "";
     showAuthStep("email");
   });
+
+  async function sendOtpAndShowCodeStep(email: string): Promise<void> {
+    const res = await fetch(`${BACKEND_URL}/auth/request`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    if (!res.ok) {
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      throw new Error(body.error ?? `HTTP ${res.status}`);
+    }
+    const display = document.getElementById("auth-email-display");
+    if (display) display.textContent = email;
+    showAuthStep("code");
+  }
+
+  async function completeSignIn(token: string, email: string): Promise<void> {
+    authToken = token;
+    await invoke("set_auth_session", { token, email });
+    showMain(email);
+    initMainApp();
+  }
 }
 
 async function signOut(): Promise<void> {
+  // Best-effort server-side logout — current backend implementation is a
+  // no-op acknowledgement, but calling it gives us future revocation
+  // hooks for free and exercises the endpoint in tests.
+  if (authToken) {
+    try {
+      await fetch(`${BACKEND_URL}/auth/logout`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${authToken}` },
+      });
+    } catch {
+      /* offline — proceed with local logout anyway */
+    }
+  }
   authToken = null;
   try {
     await invoke("clear_auth_session");
@@ -417,6 +511,137 @@ async function signOut(): Promise<void> {
     log(`clear_auth_session failed: ${err}`);
   }
   showAuthGate();
+}
+
+// ─── Set-password panel ────────────────────────────────────────────────────
+
+/**
+ * Polls /auth/check-email for the current user to know whether to label
+ * the button "Установить" or "Сменить" (and show the current-password
+ * input). Called on initMainApp + after a successful save.
+ */
+async function refreshSetPasswordButton(): Promise<void> {
+  const btn = document.getElementById("set-password-btn") as HTMLButtonElement | null;
+  if (!btn) return;
+  const email = (await invoke("get_auth_email")) as string | null;
+  if (!email) return;
+  try {
+    const res = await fetch(`${BACKEND_URL}/auth/check-email`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email }),
+    });
+    const body = (await res.json()) as { hasPassword?: boolean };
+    const has = body.hasPassword === true;
+    btn.textContent = has ? "Сменить пароль" : "Установить пароль";
+    btn.dataset.has = has ? "1" : "0";
+    const cur = document.getElementById("set-password-current") as HTMLInputElement | null;
+    if (cur) {
+      if (has) cur.removeAttribute("hidden");
+      else cur.setAttribute("hidden", "");
+    }
+  } catch {
+    /* leave default label */
+  }
+}
+
+function wireSetPasswordPanel(): void {
+  const btn = document.getElementById("set-password-btn");
+  const panel = document.getElementById("set-password-panel");
+  const cancel = document.getElementById("set-password-cancel");
+  const form = document.getElementById("set-password-form") as HTMLFormElement | null;
+  const errorEl = document.getElementById("set-password-error");
+  const successEl = document.getElementById("set-password-success");
+  const titleEl = document.getElementById("set-password-title");
+  const submitBtn = document.getElementById("set-password-submit") as HTMLButtonElement | null;
+
+  function clearMessages() {
+    errorEl?.setAttribute("hidden", "");
+    successEl?.setAttribute("hidden", "");
+    if (errorEl) errorEl.textContent = "";
+    if (successEl) successEl.textContent = "";
+  }
+
+  btn?.addEventListener("click", () => {
+    clearMessages();
+    if (panel?.hasAttribute("hidden")) {
+      panel.removeAttribute("hidden");
+      if (titleEl) {
+        titleEl.textContent =
+          (btn as HTMLElement).dataset.has === "1"
+            ? "Сменить пароль"
+            : "Установить пароль";
+      }
+      (document.getElementById("set-password-new") as HTMLInputElement | null)?.focus();
+    } else {
+      panel?.setAttribute("hidden", "");
+    }
+  });
+
+  cancel?.addEventListener("click", () => {
+    clearMessages();
+    form?.reset();
+    panel?.setAttribute("hidden", "");
+  });
+
+  form?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    clearMessages();
+    const cur = document.getElementById("set-password-current") as HTMLInputElement;
+    const next = document.getElementById("set-password-new") as HTMLInputElement;
+    const confirm = document.getElementById("set-password-confirm") as HTMLInputElement;
+    if (next.value.length < 8) {
+      if (errorEl) {
+        errorEl.textContent = "Пароль должен быть минимум 8 символов";
+        errorEl.removeAttribute("hidden");
+      }
+      return;
+    }
+    if (next.value !== confirm.value) {
+      if (errorEl) {
+        errorEl.textContent = "Пароли не совпадают";
+        errorEl.removeAttribute("hidden");
+      }
+      return;
+    }
+    if (!authToken) return;
+    if (submitBtn) {
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Сохраняем…";
+    }
+    try {
+      const payload: Record<string, string> = { newPassword: next.value };
+      if (!cur.hasAttribute("hidden") && cur.value) {
+        payload.currentPassword = cur.value;
+      }
+      const res = await fetch(`${BACKEND_URL}/auth/set-password`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${authToken}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
+      form.reset();
+      if (successEl) {
+        successEl.textContent = "Пароль сохранён";
+        successEl.removeAttribute("hidden");
+      }
+      await refreshSetPasswordButton();
+    } catch (err) {
+      if (errorEl) {
+        errorEl.textContent = err instanceof Error ? err.message : String(err);
+        errorEl.removeAttribute("hidden");
+      }
+    } finally {
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Сохранить";
+      }
+    }
+  });
 }
 
 // ─── Style picker ──────────────────────────────────────────────────────────

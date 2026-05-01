@@ -30,7 +30,7 @@
 
       <section class="auth" id="auth-step-email">
         <h2 class="t-h2">Вход</h2>
-        <p class="hint">Введите email — пришлём 6-значный код для входа.</p>
+        <p class="hint">Введите email — продолжим в зависимости от того, есть ли у вас пароль.</p>
         <form id="auth-email-form" class="auth__form">
           <input
             type="email"
@@ -41,10 +41,37 @@
             required
           />
           <button type="submit" class="btn btn--primary" id="auth-email-submit">
-            Прислать код
+            Продолжить
           </button>
         </form>
         <div class="auth__error" id="auth-email-error" hidden></div>
+      </section>
+
+      <section class="auth" id="auth-step-password" hidden>
+        <h2 class="t-h2">Введите пароль</h2>
+        <p class="hint">
+          Аккаунт <span id="auth-password-email"></span>.
+        </p>
+        <form id="auth-password-form" class="auth__form">
+          <input
+            type="password"
+            id="auth-password"
+            class="auth__input"
+            placeholder="Пароль"
+            autocomplete="current-password"
+            required
+          />
+          <button type="submit" class="btn btn--primary" id="auth-password-submit">
+            Войти
+          </button>
+        </form>
+        <div class="auth__error" id="auth-password-error" hidden></div>
+        <button type="button" class="btn btn--secondary auth__back" id="auth-use-code">
+          Войти по коду из почты
+        </button>
+        <button type="button" class="btn btn--secondary auth__back" id="auth-back-from-password">
+          Указать другой email
+        </button>
       </section>
 
       <section class="auth" id="auth-step-code" hidden>
@@ -109,7 +136,55 @@
             <div class="setting-row__title">Аккаунт</div>
             <div class="setting-row__hint" id="account-email">—</div>
           </div>
-          <button id="logout-btn" class="btn btn--secondary">Выйти</button>
+          <div class="setting-row__actions">
+            <button id="set-password-btn" class="btn btn--secondary">
+              Установить пароль
+            </button>
+            <button id="logout-btn" class="btn btn--secondary">Выйти</button>
+          </div>
+        </div>
+
+        <div id="set-password-panel" class="set-password-panel" hidden>
+          <h3 class="t-h3" id="set-password-title">Установить пароль</h3>
+          <p class="hint">Минимум 8 символов. Используется для быстрого входа без кода из почты.</p>
+          <form id="set-password-form" class="auth__form">
+            <input
+              type="password"
+              id="set-password-current"
+              class="auth__input"
+              placeholder="Текущий пароль"
+              autocomplete="current-password"
+              hidden
+            />
+            <input
+              type="password"
+              id="set-password-new"
+              class="auth__input"
+              placeholder="Новый пароль"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <input
+              type="password"
+              id="set-password-confirm"
+              class="auth__input"
+              placeholder="Повторите пароль"
+              autocomplete="new-password"
+              minlength="8"
+              required
+            />
+            <div class="row">
+              <button type="submit" class="btn btn--primary" id="set-password-submit">
+                Сохранить
+              </button>
+              <button type="button" class="btn btn--secondary" id="set-password-cancel">
+                Отмена
+              </button>
+            </div>
+          </form>
+          <div class="auth__error" id="set-password-error" hidden></div>
+          <div class="auth__success" id="set-password-success" hidden></div>
         </div>
         <div class="setting-row">
           <div class="setting-row__label">

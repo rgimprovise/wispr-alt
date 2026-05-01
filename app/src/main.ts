@@ -76,6 +76,26 @@ function updateOverlay(s: RecordingState, text: string) {
 // round-trip per request. Updated by signIn() / signOut().
 let authToken: string | null = null;
 
+// ─── Streaming transcription state ─────────────────────────────────────────
+
+/**
+ * Active /transcribe-stream WebSocket, or null when not streaming. The
+ * stream-pull-tick handler checks this; a non-null + OPEN ws means we're
+ * actively forwarding PCM16 chunks to the backend proxy.
+ */
+let streamWs: WebSocket | null = null;
+/**
+ * Set to false the moment the WS errors out so stopAndFinalize knows to
+ * fall back to the HTTP /transcribe path instead of waiting for a
+ * final_clean that won't arrive.
+ */
+let streamUsable = false;
+/**
+ * Resolved by the WS message handler when `{type:"final_clean"}` arrives.
+ * Awaited in stopAndFinalize after the commit.
+ */
+let onStreamFinalClean: ((text: string) => void) | null = null;
+
 async function authedFetch(path: string, init: RequestInit): Promise<Response> {
   if (!authToken) throw new Error("not signed in");
   const headers = new Headers(init.headers);
@@ -148,14 +168,115 @@ async function startRecording() {
     lastPartial = "";
     snapshotSeq = 0;
     snapshotInFlight = false;
-    await invoke("start_recording"); // Rust spawns its own ticker thread
+    streamUsable = false;
+    streamWs = null;
+
+    // Try to open the streaming WebSocket. Success → Rust starts in
+    // streaming mode (100ms tick) and we forward PCM frames to the
+    // backend proxy. Failure to open → fall back to legacy snapshot
+    // pattern with a slow tick + per-snapshot HTTP POSTs.
+    const ws = await openStreamWs().catch((err) => {
+      log(`stream WS failed to open: ${err}; falling back to HTTP snapshots`);
+      return null;
+    });
+    streamWs = ws;
+    streamUsable = ws !== null;
+
+    await invoke("start_recording", { streaming: streamUsable });
     setStatus("recording");
     await setOverlayVisible(true);
-    log("recording started");
+    log(streamUsable ? "recording started (streaming)" : "recording started (snapshot)");
   } catch (err) {
     log(`start failed: ${err}`);
     setStatus("idle");
+    closeStreamWs();
   }
+}
+
+/**
+ * Opens the /transcribe-stream WebSocket and resolves with it once the
+ * server emits `{type:"ready"}` (i.e. the OpenAI handshake is done and
+ * we can start sending audio). Rejects on early close or 2 s timeout.
+ */
+function openStreamWs(): Promise<WebSocket> {
+  return new Promise(async (resolve, reject) => {
+    if (!authToken) {
+      reject(new Error("not signed in"));
+      return;
+    }
+    let style = "clean";
+    try {
+      style = ((await invoke("get_style")) as string) || "clean";
+    } catch { /* default */ }
+    const wsUrl =
+      BACKEND_URL.replace(/^http/, "ws") +
+      `/transcribe-stream?token=${encodeURIComponent(authToken)}` +
+      `&style=${encodeURIComponent(style)}&language=ru`;
+    const ws = new WebSocket(wsUrl);
+    ws.binaryType = "arraybuffer";
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (!settled) {
+        settled = true;
+        try { ws.close(); } catch { /* noop */ }
+        reject(new Error("WS open timeout"));
+      }
+    }, 2000);
+
+    ws.addEventListener("message", (ev) => {
+      let data: any;
+      try { data = JSON.parse(ev.data as string); } catch { return; }
+      switch (data.type) {
+        case "ready":
+          if (!settled) {
+            settled = true;
+            clearTimeout(timeout);
+            resolve(ws);
+          }
+          break;
+        case "partial":
+          lastPartial = data.text ?? "";
+          if (state === "recording") updateOverlay("recording", lastPartial);
+          break;
+        case "final_clean":
+          onStreamFinalClean?.(data.text ?? "");
+          break;
+        case "error":
+          log(`stream error: ${data.message}`);
+          streamUsable = false;
+          // 1008 = unauthorized — same handling as HTTP 401.
+          if (String(data.message ?? "").includes("unauthorized")) {
+            void signOut();
+          }
+          break;
+      }
+    });
+    ws.addEventListener("error", () => {
+      streamUsable = false;
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        reject(new Error("WS error"));
+      }
+    });
+    ws.addEventListener("close", () => {
+      streamUsable = false;
+      if (!settled) {
+        settled = true;
+        clearTimeout(timeout);
+        reject(new Error("WS closed before ready"));
+      }
+    });
+  });
+}
+
+function closeStreamWs() {
+  if (streamWs) {
+    try { streamWs.close(); } catch { /* noop */ }
+    streamWs = null;
+  }
+  streamUsable = false;
+  onStreamFinalClean = null;
 }
 
 async function stopAndFinalize() {
@@ -169,13 +290,27 @@ async function stopAndFinalize() {
 
     if (wav.length < 4000) {
       log("too short — skipping");
+      closeStreamWs();
       await setOverlayVisible(false);
       setStatus("idle");
       return;
     }
 
     const t0 = performance.now();
-    const clean = await transcribeFinal(wav);
+    let clean: string | null = null;
+
+    // Streaming path: ask backend to commit the upstream buffer; the
+    // server runs cleanup and replies with {type:"final_clean"}. Falls
+    // back to the HTTP /transcribe pipeline if the WS errored mid-flow
+    // or the final never arrives within the timeout.
+    if (streamWs && streamWs.readyState === WebSocket.OPEN && streamUsable) {
+      clean = await waitForStreamFinalClean(streamWs, 8000);
+      if (clean === null) log("stream final timed out; falling back to HTTP");
+    }
+    if (clean === null) {
+      clean = await transcribeFinal(wav);
+    }
+
     const dt = Math.round(performance.now() - t0);
     log(`final transcribed in ${dt}ms: "${clean.slice(0, 80)}"`);
 
@@ -186,13 +321,35 @@ async function stopAndFinalize() {
       // confirmation of what was inserted before the overlay slides out.
       await new Promise((r) => setTimeout(r, 600));
     }
+    closeStreamWs();
     await setOverlayVisible(false);
     setStatus("idle");
   } catch (err) {
     log(`transcribe failed: ${err}`);
+    closeStreamWs();
     await setOverlayVisible(false);
     setStatus("idle");
   }
+}
+
+/**
+ * Sends `{type:"commit"}` to the streaming WS and resolves with the
+ * cleaned transcript when the server replies, or null on timeout / error.
+ */
+function waitForStreamFinalClean(ws: WebSocket, timeoutMs: number): Promise<string | null> {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (text: string | null) => {
+      if (settled) return;
+      settled = true;
+      onStreamFinalClean = null;
+      clearTimeout(timer);
+      resolve(text);
+    };
+    onStreamFinalClean = (text) => finish(text);
+    const timer = setTimeout(() => finish(null), timeoutMs);
+    try { ws.send(JSON.stringify({ type: "commit" })); } catch { finish(null); }
+  });
 }
 
 async function onHotkey() {
@@ -254,6 +411,20 @@ async function initMainApp() {
   // Rust-driven snapshot ticker (immune to WKWebView background throttling).
   listen("snapshot-tick", () => {
     tickSnapshot();
+  });
+
+  // Streaming PCM tick — Rust emits every 100ms while recording in
+  // streaming mode. Pull the new bytes and forward as a binary WS frame.
+  listen("stream-pull-tick", async () => {
+    if (state !== "recording") return;
+    if (!streamWs || streamWs.readyState !== WebSocket.OPEN) return;
+    try {
+      const chunk = (await invoke("pull_pcm16_chunk")) as number[];
+      if (chunk.length === 0) return;
+      streamWs.send(new Uint8Array(chunk).buffer);
+    } catch (err) {
+      log(`pull_pcm16_chunk failed: ${err}`);
+    }
   });
 
   document.querySelector("#test-paste")?.addEventListener("click", async () => {

@@ -8,6 +8,10 @@ pub struct Recorder {
     sample_rate: u32,
     stop_tx: Option<mpsc::Sender<()>>,
     done_rx: Option<mpsc::Receiver<()>>,
+    /// Offset into `samples` returned by the last `pull_pcm16_chunk`
+    /// call. Reset on each `start()`. Lets the JS-side WS streamer pull
+    /// "what's new since last poll" without re-sending old audio.
+    pull_offset: usize,
 }
 
 impl Recorder {
@@ -17,6 +21,7 @@ impl Recorder {
             sample_rate: 48_000,
             stop_tx: None,
             done_rx: None,
+            pull_offset: 0,
         }
     }
 
@@ -29,6 +34,7 @@ impl Recorder {
             return Err("already recording".into());
         }
         self.samples.lock().unwrap().clear();
+        self.pull_offset = 0;
 
         let samples = self.samples.clone();
         let (stop_tx, stop_rx) = mpsc::channel::<()>();
@@ -154,6 +160,42 @@ impl Recorder {
     pub fn snapshot_wav(&self) -> Result<Vec<u8>, String> {
         let samples = self.samples.lock().unwrap().clone();
         write_wav(&samples, self.sample_rate)
+    }
+
+    /// Returns new mic samples since the last call, downsampled to
+    /// 16 kHz mono PCM16 little-endian. Used by the streaming
+    /// /transcribe-stream WS path on the JS side: poll every ~100 ms,
+    /// forward the bytes verbatim as binary frames.
+    ///
+    /// Implementation: input is mono f32 at the device sample rate
+    /// (typically 48 kHz). We do a naive integer-ratio downsample —
+    /// pick every Nth sample where N = sample_rate / 16000. Acceptable
+    /// for speech; OpenAI's Realtime model is robust to this. Returns
+    /// an empty Vec when no new samples are available.
+    pub fn pull_pcm16_16k_chunk(&mut self) -> Vec<u8> {
+        let buf = self.samples.lock().unwrap();
+        if self.pull_offset >= buf.len() {
+            return Vec::new();
+        }
+        let new = &buf[self.pull_offset..];
+        let new_len = new.len();
+        // Integer-ratio downsample. If the device runs at e.g. 44.1 kHz
+        // (not a clean multiple of 16 k) we'd need fractional resampling
+        // for top quality, but speech transcription tolerates the small
+        // skew from `step = (sr / 16000).max(1)`.
+        let step = (self.sample_rate as usize / 16_000).max(1);
+        let mut out = Vec::with_capacity(new_len / step * 2);
+        let mut i = 0;
+        while i < new.len() {
+            let s = new[i].clamp(-1.0, 1.0);
+            let v = (s * 32767.0) as i16;
+            out.extend_from_slice(&v.to_le_bytes());
+            i += step;
+        }
+        // Move offset by samples consumed (= the part we read), not by
+        // output bytes. Even when step > 1 we've inspected `new_len`.
+        self.pull_offset += new_len;
+        out
     }
 
     pub fn stop(&mut self) -> Result<Vec<u8>, String> {

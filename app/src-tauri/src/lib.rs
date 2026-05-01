@@ -26,22 +26,36 @@ pub struct AppState {
 fn start_recording(
     state: tauri::State<AppState>,
     app: tauri::AppHandle,
+    streaming: Option<bool>,
 ) -> Result<(), String> {
     state.recorder.lock().unwrap().start()?;
 
-    // Rust-side ticker for live-preview snapshots. Lives here, not in JS,
+    // Rust-side ticker for the JS audio loop. Lives here, not in JS,
     // because macOS WKWebView throttles setInterval when the window is
     // backgrounded — which happens as soon as the user focuses TextEdit
-    // to speak. Emits "snapshot-tick" every 2s while recording is active.
+    // to speak.
+    //
+    // - streaming=false (default): emits "snapshot-tick" every 2s; JS
+    //   pulls the WAV and POSTs to /transcribe?postprocess=false for a
+    //   coarse live preview. Legacy path, kept as fallback.
+    // - streaming=true: emits "stream-pull-tick" every 100ms; JS pulls
+    //   PCM16 16kHz chunks and forwards as binary frames over the
+    //   /transcribe-stream WebSocket.
+    let stream = streaming.unwrap_or(false);
+    let (event, period) = if stream {
+        ("stream-pull-tick", std::time::Duration::from_millis(100))
+    } else {
+        ("snapshot-tick", std::time::Duration::from_secs(2))
+    };
     let app_clone = app.clone();
     std::thread::spawn(move || loop {
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        std::thread::sleep(period);
         let s = app_clone.state::<AppState>();
         let still_recording = s.recorder.lock().unwrap().is_recording();
         if !still_recording {
             break;
         }
-        let _ = app_clone.emit("snapshot-tick", ());
+        let _ = app_clone.emit(event, ());
     });
 
     Ok(())
@@ -55,6 +69,14 @@ fn stop_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
 #[tauri::command]
 fn snapshot_recording(state: tauri::State<AppState>) -> Result<Vec<u8>, String> {
     state.recorder.lock().unwrap().snapshot_wav()
+}
+
+/// Returns new mic samples since the previous call as PCM16 mono 16 kHz
+/// LE bytes. Driven by the JS streaming layer: poll every ~100 ms and
+/// forward the bytes verbatim as a binary WS frame.
+#[tauri::command]
+fn pull_pcm16_chunk(state: tauri::State<AppState>) -> Vec<u8> {
+    state.recorder.lock().unwrap().pull_pcm16_16k_chunk()
 }
 
 #[tauri::command]
@@ -442,6 +464,7 @@ pub fn run() {
             start_recording,
             stop_recording,
             snapshot_recording,
+            pull_pcm16_chunk,
             is_recording,
             paste,
             check_accessibility,

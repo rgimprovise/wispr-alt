@@ -69,23 +69,17 @@ pub fn load(app: &AppHandle) -> Settings {
 /// but doesn't drop the user's session — they stay signed in via the
 /// settings.json values until next launch (where we retry).
 pub fn migrate_auth_to_keychain(app: &AppHandle) {
-    let mut current = load(app);
-    let token = current.auth_token.take();
-    let email = current.auth_email.take();
-    let Some(token) = token else { return };
-    let Some(email) = email else { return };
-    match crate::keystore::save(&token, &email) {
-        Ok(()) => {
-            // Strip from disk only after the keychain accepted the value.
-            // If save() above failed, we leave the plaintext in place so
-            // the user stays signed in and we can retry next launch.
-            if let Err(e) = save(app, &current) {
-                eprintln!("[settings] migration: failed to strip plaintext: {e}");
-            } else {
-                eprintln!("[settings] migrated auth session to OS keychain");
-            }
-        }
-        Err(e) => eprintln!("[settings] keychain write failed during migration: {e}"),
+    let current = load(app);
+    let Some(token) = current.auth_token.as_ref() else { return };
+    let Some(email) = current.auth_email.as_ref() else { return };
+    // Best-effort write to keychain. We INTENTIONALLY no longer strip the
+    // values from settings.json — keychain access on unsigned macOS dev
+    // binaries can fail on later boots, and losing the only copy would
+    // log the user out. settings.json mirror is now the durable backup
+    // (see lib.rs::set_auth_session for the always-mirror policy).
+    match crate::keystore::save(token, email) {
+        Ok(()) => eprintln!("[settings] auth session mirrored to keychain"),
+        Err(e) => eprintln!("[settings] keychain write skipped: {e}"),
     }
 }
 

@@ -137,40 +137,79 @@ fn get_style(app: tauri::AppHandle) -> String {
 // and fetch). These Rust commands just persist the resulting JWT + email
 // to the same settings.json other prefs use.
 
-/// Returns the stored JWT (or null if not signed in). Frontend reads this
-/// once on startup and attaches it as `Authorization: Bearer …` to every
-/// /transcribe request. Backed by the OS keychain (v0.3.3+).
+/// Returns the stored JWT. Reads OS keychain first; if unavailable
+/// (unsigned dev binaries on macOS lose keychain ACL between rebuilds,
+/// fresh Linux installs without a configured Secret Service, etc.)
+/// falls back to settings.json which is always writable.
 #[tauri::command]
-fn get_auth_token(_app: tauri::AppHandle) -> Option<String> {
-    keystore::get_token().unwrap_or_else(|e| {
-        eprintln!("[auth] {e}");
-        None
-    })
+fn get_auth_token(app: tauri::AppHandle) -> Option<String> {
+    match keystore::get_token() {
+        Ok(Some(t)) => {
+            eprintln!("[auth] token from keychain");
+            Some(t)
+        }
+        Ok(None) => {
+            let from_settings = settings::load(&app).auth_token;
+            if from_settings.is_some() {
+                eprintln!("[auth] token from settings.json fallback");
+            } else {
+                eprintln!("[auth] no token (neither keychain nor settings)");
+            }
+            from_settings
+        }
+        Err(e) => {
+            eprintln!("[auth] keychain read failed ({e}); using settings.json");
+            settings::load(&app).auth_token
+        }
+    }
 }
 
-/// Returns the email of the signed-in user (for the "logged in as" UI).
 #[tauri::command]
-fn get_auth_email(_app: tauri::AppHandle) -> Option<String> {
-    keystore::get_email().unwrap_or_else(|e| {
-        eprintln!("[auth] {e}");
-        None
-    })
+fn get_auth_email(app: tauri::AppHandle) -> Option<String> {
+    match keystore::get_email() {
+        Ok(Some(e)) => Some(e),
+        Ok(None) => settings::load(&app).auth_email,
+        Err(e) => {
+            eprintln!("[auth] keychain read failed ({e}); using settings.json");
+            settings::load(&app).auth_email
+        }
+    }
 }
 
+/// Persists the session. Writes to BOTH keychain and settings.json so
+/// either store can serve as the source of truth on the next boot.
+/// Trade-off: settings.json stays a plaintext mirror, but it's already
+/// in the app's per-user data dir and the JWT is short-lived.
 #[tauri::command]
 fn set_auth_session(
-    _app: tauri::AppHandle,
+    app: tauri::AppHandle,
     token: String,
     email: String,
 ) -> Result<(), String> {
-    keystore::save(&token, &email)?;
-    eprintln!("[auth] session stored");
+    let kc = keystore::save(&token, &email);
+    if let Err(ref e) = kc {
+        eprintln!("[auth] keychain write failed: {e}");
+    }
+    // Always mirror to settings.json — cheap and survives keychain loss.
+    let mut current = settings::load(&app);
+    current.auth_token = Some(token);
+    current.auth_email = Some(email);
+    settings::save(&app, &current)?;
+    if kc.is_ok() {
+        eprintln!("[auth] session stored (keychain + settings)");
+    } else {
+        eprintln!("[auth] session stored (settings only — keychain unavailable)");
+    }
     Ok(())
 }
 
 #[tauri::command]
-fn clear_auth_session(_app: tauri::AppHandle) -> Result<(), String> {
-    keystore::clear()?;
+fn clear_auth_session(app: tauri::AppHandle) -> Result<(), String> {
+    let _ = keystore::clear();
+    let mut current = settings::load(&app);
+    current.auth_token = None;
+    current.auth_email = None;
+    settings::save(&app, &current)?;
     eprintln!("[auth] session cleared");
     Ok(())
 }
@@ -351,9 +390,18 @@ pub fn run() {
                     let Some(token) = token else { continue };
                     let final_email = email
                         .or_else(|| keystore::get_email().ok().flatten())
+                        .or_else(|| settings::load(&app_for_dl).auth_email)
                         .unwrap_or_default();
+                    // Same dual-write policy as set_auth_session: keychain
+                    // best-effort, settings.json as durable mirror.
                     if let Err(e) = keystore::save(&token, &final_email) {
-                        eprintln!("[deep-link] keystore save failed: {e}");
+                        eprintln!("[deep-link] keychain save failed: {e}");
+                    }
+                    let mut s = settings::load(&app_for_dl);
+                    s.auth_token = Some(token.clone());
+                    s.auth_email = Some(final_email.clone());
+                    if let Err(e) = settings::save(&app_for_dl, &s) {
+                        eprintln!("[deep-link] settings save failed: {e}");
                         continue;
                     }
                     let _ = app_for_dl.emit(

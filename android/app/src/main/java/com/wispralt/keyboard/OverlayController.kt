@@ -678,6 +678,13 @@ class OverlayController(private val service: WisprService) {
     // ─── HTTP ──────────────────────────────────────────────────────────────
 
     private fun transcribe(wav: ByteArray, postprocess: Boolean): String? {
+        val token = AuthStore.token(ctx) ?: run {
+            // Should never happen — MainActivity gates on auth before
+            // starting the service. But be defensive.
+            android.util.Log.w("OverlayController", "no auth token; skipping transcribe")
+            handleAuthExpired()
+            return null
+        }
         val style = StyleStore.get(ctx).raw
         val body = MultipartBody.Builder()
             .setType(MultipartBody.FORM)
@@ -692,16 +699,36 @@ class OverlayController(private val service: WisprService) {
 
         val req = Request.Builder()
             .url("${BuildConfig.BACKEND_URL}/transcribe")
+            .header("Authorization", "Bearer $token")
             .post(body)
             .build()
 
         http.newCall(req).execute().use { res ->
+            if (res.code == 401) {
+                handleAuthExpired()
+                return null
+            }
             if (!res.isSuccessful) return null
             val text = res.body?.string() ?: return null
             val json = JSONObject(text)
             return if (postprocess) {
                 json.optString("clean").ifBlank { json.optString("raw") }
             } else json.optString("raw")
+        }
+    }
+
+    /**
+     * Token is expired or revoked. Drop credentials and route the user
+     * back to LoginActivity. Posted on the main looper because we may be
+     * called from OkHttp's network thread.
+     */
+    private fun handleAuthExpired() {
+        AuthStore.clear(ctx)
+        android.os.Handler(android.os.Looper.getMainLooper()).post {
+            val intent = android.content.Intent(ctx, LoginActivity::class.java)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                .addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP)
+            ctx.startActivity(intent)
         }
     }
 

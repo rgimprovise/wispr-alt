@@ -31,6 +31,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Email magic-link / OTP login. Shown on first launch and after
+             a 401 from the backend. MainActivity routes here when no
+             token is present in AuthStore. -->
+        <activity
+            android:name=".LoginActivity"
+            android:exported="false" />
+
         <!-- Foreground service: owns the overlay + recording lifecycle.
              Started when the user taps the QS tile, notification action,
              or the launcher's "Dictate now" shortcut. -->

@@ -55,8 +55,8 @@ android {
         applicationId = "com.wispralt.keyboard"
         minSdk = 26
         targetSdk = 34
-        versionCode = 11
-        versionName = "0.7.2"
+        versionCode = 12
+        versionName = "0.8.0"
 
         // Backend URL baked in at compile time.
         val backendUrl = System.getenv("WISPR_BACKEND_URL")

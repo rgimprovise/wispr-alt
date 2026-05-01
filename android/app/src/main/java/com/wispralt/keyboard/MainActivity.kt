@@ -44,12 +44,25 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Auth gate: bounce to LoginActivity until we have a JWT. Re-checked
+        // in onResume() so that signing out (or a 401 elsewhere clearing
+        // the store) immediately routes back to login.
+        if (!AuthStore.isSignedIn(this)) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         setContentView(buildShellLayout())
         renderForState()
     }
 
     override fun onResume() {
         super.onResume()
+        if (!AuthStore.isSignedIn(this)) {
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
+            return
+        }
         renderForState()
     }
 
@@ -300,6 +313,9 @@ class MainActivity : AppCompatActivity() {
         c.addView(styleCard())
         c.addView(spacer(dp(16)))
 
+        c.addView(accountCard())
+        c.addView(spacer(dp(16)))
+
         if (!hasMic()) c.addView(gateBanner(
             "Микрофон не разрешён",
             "Без доступа к микрофону приложение не сможет записывать голос.",
@@ -377,6 +393,42 @@ class MainActivity : AppCompatActivity() {
                     renderForState()
                 }
             }
+        })
+        return card
+    }
+
+    private fun accountCard(): View {
+        val email = AuthStore.email(this) ?: "—"
+        val card = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(20), dp(22), dp(20))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = dp(20).toFloat()
+                setColor(col(R.color.surface_1))
+                setStroke(dp(1), col(R.color.border_subtle))
+            }
+        }
+        card.addView(TextView(this).apply {
+            text = "Аккаунт"
+            setTextColor(col(R.color.text_primary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 16f)
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        })
+        card.addView(spacer(dp(6)))
+        card.addView(TextView(this).apply {
+            text = email
+            setTextColor(col(R.color.text_secondary))
+            setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
+        })
+        card.addView(spacer(dp(12)))
+        card.addView(secondaryButton("Выйти") {
+            AuthStore.clear(this)
+            // Stop the foreground service too — without a token it can't
+            // hit /transcribe anyway, and re-login will restart it.
+            WisprService.stop(this)
+            startActivity(Intent(this, LoginActivity::class.java))
+            finish()
         })
         return card
     }

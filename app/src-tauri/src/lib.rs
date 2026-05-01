@@ -10,6 +10,7 @@ use tauri::{
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Emitter, Manager, WebviewUrl, WebviewWindowBuilder,
 };
+use tauri_plugin_deep_link::DeepLinkExt;
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, Shortcut, ShortcutState};
 
 pub struct AppState {
@@ -254,6 +255,17 @@ pub fn run() {
             recorder: Mutex::new(audio::Recorder::new()),
             current_hotkey: Mutex::new(None),
         })
+        // single-instance MUST be the first plugin: when a second copy of
+        // the app is launched (e.g. user clicks belovik://auth from a
+        // browser), this routes the URL to the running instance instead
+        // of spawning a duplicate.
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // Bring the existing window forward so the user sees the
+            // sign-in succeed. The deep-link plugin (registered below)
+            // delivers the URL itself via on_open_url.
+            bring_main_to_front(app);
+        }))
+        .plugin(tauri_plugin_deep_link::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
@@ -265,6 +277,55 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
+            // Register the belovik:// scheme at runtime. Bundled releases
+            // get this through Info.plist / WiX / .desktop files generated
+            // by tauri build, but dev mode (`bun tauri dev`) needs explicit
+            // registration to receive deep links. Cheap no-op when already
+            // registered.
+            #[cfg(any(target_os = "linux", target_os = "windows"))]
+            {
+                let _ = app.deep_link().register("belovik");
+            }
+
+            // Magic-link deep links. When the user clicks the email's
+            // belovik://auth?token=…&email=… URL we save the session and
+            // emit "auth-deep-link" so the JS layer flips out of the
+            // login gate. Both fresh-launch and already-running cases
+            // funnel through this same callback.
+            let app_for_dl = app.handle().clone();
+            app.deep_link().on_open_url(move |event| {
+                for url in event.urls() {
+                    if url.scheme() != "belovik" || url.host_str() != Some("auth") {
+                        continue;
+                    }
+                    let mut token: Option<String> = None;
+                    let mut email: Option<String> = None;
+                    for (k, v) in url.query_pairs() {
+                        match k.as_ref() {
+                            "token" => token = Some(v.into_owned()),
+                            "email" => email = Some(v.into_owned()),
+                            _ => {}
+                        }
+                    }
+                    let Some(token) = token else { continue };
+                    let final_email = email
+                        .or_else(|| settings::load(&app_for_dl).auth_email)
+                        .unwrap_or_default();
+                    let mut current = settings::load(&app_for_dl);
+                    current.auth_token = Some(token.clone());
+                    current.auth_email = Some(final_email.clone());
+                    if let Err(e) = settings::save(&app_for_dl, &current) {
+                        eprintln!("[deep-link] settings save failed: {e}");
+                        continue;
+                    }
+                    let _ = app_for_dl.emit(
+                        "auth-deep-link",
+                        serde_json::json!({ "token": token, "email": final_email }),
+                    );
+                    bring_main_to_front(&app_for_dl);
+                }
+            });
+
             // Prompt for macOS Accessibility permission on first launch.
             // This is required for osascript to synthesize Cmd+V into
             // other applications via System Events.

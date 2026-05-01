@@ -208,6 +208,15 @@ window.addEventListener("DOMContentLoaded", async () => {
   setStatus("idle");
   wireAuth();
 
+  // belovik://auth?token=…&email=… — Rust persisted the session before
+  // emitting; we just refresh in-memory state and swap surfaces.
+  listen("auth-deep-link", async (event) => {
+    const payload = event.payload as { token: string; email: string };
+    authToken = payload.token;
+    showMain(payload.email);
+    initMainApp();
+  });
+
   // Decide which surface to show: signed-in user → main app; otherwise
   // the email-entry step of the auth gate.
   const stored = (await invoke("get_auth_token")) as string | null;

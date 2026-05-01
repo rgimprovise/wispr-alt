@@ -126,7 +126,9 @@ auth.get("/verify-link", async (c) => {
   markUserLogin(user.id);
   const jwt = mintJwt(user.id, user.email);
 
-  const deepLink = `belovik://auth?token=${encodeURIComponent(jwt)}`;
+  const deepLink =
+    `belovik://auth?token=${encodeURIComponent(jwt)}` +
+    `&email=${encodeURIComponent(user.email)}`;
   return c.html(`<!doctype html>
 <html><head><meta charset="utf-8"><title>Беловик — вход</title>
 <meta http-equiv="refresh" content="0; url=${deepLink}">

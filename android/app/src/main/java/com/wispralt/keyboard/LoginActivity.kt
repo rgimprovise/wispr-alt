@@ -1,5 +1,6 @@
 package com.wispralt.keyboard
 
+import android.content.Intent
 import android.os.Bundle
 import android.text.InputType
 import android.util.TypedValue
@@ -39,6 +40,36 @@ class LoginActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(buildShell())
         renderEmailStep()
+        handleDeepLinkIntent(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleDeepLinkIntent(intent)
+    }
+
+    /**
+     * Handles `belovik://auth?token=…&email=…` opened from the magic-link
+     * email. If a token is present we save the session and finish; the
+     * caller (MainActivity) re-checks AuthStore on resume and continues.
+     *
+     * Email is preferred from the URL when provided so the UI shows the
+     * right address; otherwise we fall back to whatever was already typed.
+     */
+    private fun handleDeepLinkIntent(intent: Intent?) {
+        if (intent?.action != Intent.ACTION_VIEW) return
+        val uri = intent.data ?: return
+        if (uri.scheme != "belovik" || uri.host != "auth") return
+        val token = uri.getQueryParameter("token")?.takeIf { it.isNotBlank() } ?: return
+        val emailFromLink = uri.getQueryParameter("email")?.takeIf { it.isNotBlank() }
+            ?: AuthStore.email(this)
+            ?: pendingEmail.takeIf { it.isNotBlank() }
+            ?: ""
+        AuthStore.save(this, token, emailFromLink)
+        startActivity(Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_SINGLE_TOP
+        })
+        finish()
     }
 
     override fun onDestroy() {

@@ -10,8 +10,27 @@ struct WisprAltApp: App {
             RootView()
                 .environmentObject(router)
                 .environmentObject(auth)
-                .onOpenURL { router.handleDeepLink($0) }
+                .onOpenURL { handleDeepLink($0) }
         }
+    }
+
+    /// Two URL schemes are registered for the app:
+    ///   - `wispralt://` — internal, between the keyboard extension and the
+    ///     main app (e.g. `wispralt://dictate` to open the recorder).
+    ///   - `belovik://`  — external, used in magic-link emails. We accept
+    ///     `belovik://auth?token=…&email=…` to sign the user in directly.
+    private func handleDeepLink(_ url: URL) {
+        if url.scheme == "belovik", url.host == "auth" {
+            let comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            let items = comps?.queryItems ?? []
+            let token = items.first { $0.name == "token" }?.value
+            let email = items.first { $0.name == "email" }?.value
+            if let token, !token.isEmpty {
+                auth.save(token: token, email: email ?? auth.email ?? "")
+            }
+            return
+        }
+        router.handleDeepLink(url)
     }
 }
 

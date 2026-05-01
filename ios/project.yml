@@ -41,6 +41,7 @@ targets:
           - CFBundleURLName: com.wispralt.app
             CFBundleURLSchemes:
               - wispralt
+              - belovik
         UIBackgroundModes:
           - audio
         WISPR_BACKEND_URL: $(WISPR_BACKEND_URL)

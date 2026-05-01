@@ -33,10 +33,21 @@
 
         <!-- Email magic-link / OTP login. Shown on first launch and after
              a 401 from the backend. MainActivity routes here when no
-             token is present in AuthStore. -->
+             token is present in AuthStore.
+             singleTask + exported so the magic link email's
+             belovik://auth?token=... URL routes here whether the app is
+             cold or already in foreground; onNewIntent handles re-entry. -->
         <activity
             android:name=".LoginActivity"
-            android:exported="false" />
+            android:exported="true"
+            android:launchMode="singleTask">
+            <intent-filter android:autoVerify="false">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="belovik" android:host="auth" />
+            </intent-filter>
+        </activity>
 
         <activity
             android:name=".SetPasswordActivity"

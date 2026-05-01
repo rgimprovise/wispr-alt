@@ -7,6 +7,7 @@
     "core:default",
     "core:window:allow-show",
     "core:window:allow-hide",
-    "opener:default"
+    "opener:default",
+    "deep-link:default"
   ]
 }

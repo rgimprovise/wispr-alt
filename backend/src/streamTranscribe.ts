@@ -48,15 +48,17 @@ export class StreamSession {
   private audioBacklog: ArrayBuffer[] = [];
   /** Accumulates delta text within the current turn. Reset each completed. */
   private currentTurnDelta = "";
-  /** Concatenation of all completed turns so far (server_vad may auto-commit
-   *  several times during one recording). */
+  /** Concatenation of all completed turns so far. */
   private completedTurns = "";
   /** Set when the client has sent `commit` and we're waiting for the last
    *  completed event before running cleanup. */
   private awaitingFinal = false;
-  /** Whether server_vad created the session — we only send manual commits
-   *  to flush trailing audio. */
   private closed = false;
+  /** PCM16 samples appended since the last `input_audio_buffer.commit`.
+   *  OpenAI rejects commits with <100 ms of audio (1600 samples @ 16 kHz)
+   *  so we gate the autocommit ticker on this. */
+  private samplesSinceCommit = 0;
+  private commitTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private readonly client: MinimalWS,
@@ -109,13 +111,21 @@ export class StreamSession {
       return;
     }
     if (msg.type === "commit") {
-      // server_vad may already have committed everything during silence.
-      // We still send a manual commit to flush any trailing audio that
-      // hasn't tripped the VAD threshold; if the buffer is empty OpenAI
-      // returns an `input_audio_buffer_commit_empty` error which we treat
-      // as "nothing more to wait for" and finalize immediately.
+      // Stop the periodic ticker — the user released the record gesture,
+      // we're now flushing any trailing audio and waiting for the last
+      // completed event before finalizing.
+      this.stopAutoCommit();
       this.awaitingFinal = true;
-      this.sendUpstream({ type: "input_audio_buffer.commit" });
+      // Only send a final commit if there's enough audio; otherwise we'd
+      // get input_audio_buffer_commit_empty and the handler bounces us
+      // straight to runCleanupAndClose, which is what we want anyway.
+      if (this.samplesSinceCommit >= 1600) {
+        this.samplesSinceCommit = 0;
+        this.sendUpstream({ type: "input_audio_buffer.commit" });
+      } else {
+        // Nothing left to transcribe — finalize with what we have.
+        void this.runCleanupAndClose();
+      }
       // Safety net: if neither a `completed` event nor an error arrives
       // within 4s, finalize with what we already have.
       setTimeout(() => {
@@ -151,29 +161,40 @@ export class StreamSession {
             "рабочие сообщения. В тексте могут быть имена собственные, термины " +
             "и отдельные английские слова.",
         },
-        // server_vad gives us live deltas as the user speaks. It also
-        // auto-commits on silence, which produces multiple completed
-        // events per recording — we concatenate them in completedTurns
-        // and emit final_clean after the client's commit signal.
-        //
-        // Tuning for low live-preview latency:
-        //  - silence_duration_ms = 200: VAD triggers on micro-pauses
-        //    between words rather than full sentences, so partials
-        //    arrive within ~1s of speech start instead of after the
-        //    speaker finishes their first thought.
-        //  - threshold = 0.3: more sensitive to quieter mics; trade-off
-        //    is occasional false speech_started on background noise,
-        //    which the model handles gracefully (empty turn).
-        //  - prefix_padding_ms = 300: keep a bit more pre-roll so
-        //    word starts aren't clipped after a pause.
-        turn_detection: {
-          type: "server_vad",
-          threshold: 0.3,
-          prefix_padding_ms: 300,
-          silence_duration_ms: 200,
-        },
+        // We disable server_vad and commit manually on a fixed cadence
+        // (see scheduleAutoCommit). gpt-4o-mini-transcribe only emits
+        // deltas after a turn is committed, so VAD-based commits mean
+        // a fluent speaker waits ≥1 sentence for the first partial.
+        // Time-based commits land short turns (~2-3 words at 600 ms)
+        // for sub-second live preview at the cost of occasional
+        // mid-word cuts — fine for a preview, the final transcript is
+        // a concat of all turns.
+        turn_detection: null,
       },
     });
+  }
+
+  /**
+   * Periodically flushes the input buffer with `input_audio_buffer.commit`
+   * so the model produces a `completed` event every ~600 ms instead of
+   * waiting for VAD to detect silence. Started after the session is ready.
+   */
+  private scheduleAutoCommit(): void {
+    if (this.commitTimer) return;
+    this.commitTimer = setInterval(() => {
+      if (this.closed || this.awaitingFinal) return;
+      // OpenAI rejects commits with <100 ms (= 1600 samples @ 16 kHz).
+      if (this.samplesSinceCommit < 1600) return;
+      this.samplesSinceCommit = 0;
+      this.sendUpstream({ type: "input_audio_buffer.commit" });
+    }, 600);
+  }
+
+  private stopAutoCommit(): void {
+    if (this.commitTimer) {
+      clearInterval(this.commitTimer);
+      this.commitTimer = null;
+    }
   }
 
   private onUpstreamMessage(ev: MessageEvent): void {
@@ -191,6 +212,7 @@ export class StreamSession {
         // Flush backlog of audio frames received during handshake.
         for (const buf of this.audioBacklog) this.forwardAudio(buf);
         this.audioBacklog = [];
+        this.scheduleAutoCommit();
         break;
       case "conversation.item.input_audio_transcription.delta": {
         const delta = (data.delta as string) ?? "";
@@ -277,8 +299,6 @@ export class StreamSession {
   // ─── Helpers ───────────────────────────────────────────────────────────
 
   private forwardAudio(buf: ArrayBuffer): void {
-    // Base64-encode the raw PCM and wrap as input_audio_buffer.append.
-    // Bun.btoa handles binary strings correctly in v1.x.
     const bytes = new Uint8Array(buf);
     let binary = "";
     for (let i = 0; i < bytes.length; i++) {
@@ -286,6 +306,8 @@ export class StreamSession {
     }
     const audio = btoa(binary);
     this.sendUpstream({ type: "input_audio_buffer.append", audio });
+    // 16-bit samples → 2 bytes each. Tracked for the auto-commit ticker.
+    this.samplesSinceCommit += bytes.length / 2;
   }
 
   private sendUpstream(msg: object): void {
@@ -306,6 +328,7 @@ export class StreamSession {
   private close(code: number, reason: string): void {
     if (this.closed) return;
     this.closed = true;
+    this.stopAutoCommit();
     try { this.upstream?.close(); } catch { /* noop */ }
     this.upstream = null;
     try { this.client.close(code, reason); } catch { /* noop */ }

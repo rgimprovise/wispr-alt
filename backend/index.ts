@@ -13,7 +13,7 @@ const app = new Hono();
 app.use("/*", cors({ origin: "*" })); // tighten in prod
 
 app.get("/", (c) =>
-  c.json({ ok: true, service: "wispr-alt", version: "0.5.0" })
+  c.json({ ok: true, service: "wispr-alt", version: "0.5.1" })
 );
 
 app.route("/auth", auth);

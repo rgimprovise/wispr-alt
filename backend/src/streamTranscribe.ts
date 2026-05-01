@@ -46,10 +46,16 @@ export class StreamSession {
   private upstreamReady = false;
   /** Audio frames received before upstream finished handshake — replayed once ready. */
   private audioBacklog: ArrayBuffer[] = [];
-  /** Accumulates `delta` text so we can fall back if `completed` never arrives. */
-  private partialAccum = "";
-  /** Raw transcript from `…transcription.completed`. Set once. */
-  private finalRaw: string | null = null;
+  /** Accumulates delta text within the current turn. Reset each completed. */
+  private currentTurnDelta = "";
+  /** Concatenation of all completed turns so far (server_vad may auto-commit
+   *  several times during one recording). */
+  private completedTurns = "";
+  /** Set when the client has sent `commit` and we're waiting for the last
+   *  completed event before running cleanup. */
+  private awaitingFinal = false;
+  /** Whether server_vad created the session — we only send manual commits
+   *  to flush trailing audio. */
   private closed = false;
 
   constructor(
@@ -103,7 +109,20 @@ export class StreamSession {
       return;
     }
     if (msg.type === "commit") {
+      // server_vad may already have committed everything during silence.
+      // We still send a manual commit to flush any trailing audio that
+      // hasn't tripped the VAD threshold; if the buffer is empty OpenAI
+      // returns an `input_audio_buffer_commit_empty` error which we treat
+      // as "nothing more to wait for" and finalize immediately.
+      this.awaitingFinal = true;
       this.sendUpstream({ type: "input_audio_buffer.commit" });
+      // Safety net: if neither a `completed` event nor an error arrives
+      // within 4s, finalize with what we already have.
+      setTimeout(() => {
+        if (this.awaitingFinal && !this.closed) {
+          void this.runCleanupAndClose();
+        }
+      }, 4000);
     } else if (msg.type === "cancel") {
       this.close(1000, "cancelled by client");
     }
@@ -132,9 +151,16 @@ export class StreamSession {
             "рабочие сообщения. В тексте могут быть имена собственные, термины " +
             "и отдельные английские слова.",
         },
-        // Manual commit — we send `input_audio_buffer.commit` when the
-        // client releases the record gesture. Server VAD added later.
-        turn_detection: null,
+        // server_vad gives us live deltas as the user speaks. It also
+        // auto-commits on silence, which produces multiple completed
+        // events per recording — we concatenate them in completedTurns
+        // and emit final_clean after the client's commit signal.
+        turn_detection: {
+          type: "server_vad",
+          threshold: 0.5,
+          prefix_padding_ms: 200,
+          silence_duration_ms: 500,
+        },
       },
     });
   }
@@ -158,25 +184,46 @@ export class StreamSession {
       case "conversation.item.input_audio_transcription.delta": {
         const delta = (data.delta as string) ?? "";
         if (delta) {
-          this.partialAccum += delta;
-          this.sendClient({ type: "partial", text: this.partialAccum });
+          this.currentTurnDelta += delta;
+          // Live preview = everything completed so far + the in-progress turn.
+          const live = (this.completedTurns + " " + this.currentTurnDelta).trim();
+          this.sendClient({ type: "partial", text: live });
         }
         break;
       }
-      case "conversation.item.input_audio_transcription.completed":
-        this.finalRaw = (data.transcript as string) ?? this.partialAccum;
-        this.sendClient({ type: "final_raw", text: this.finalRaw });
-        // Cleanup happens off the upstream-message thread to keep this
-        // handler tight.
-        void this.runCleanupAndClose();
+      case "conversation.item.input_audio_transcription.completed": {
+        const turnText = (data.transcript as string) ?? this.currentTurnDelta;
+        if (turnText) {
+          this.completedTurns = (this.completedTurns + " " + turnText).trim();
+        }
+        this.currentTurnDelta = "";
+        // If the client already requested final, this is the last turn we
+        // were waiting for — finalize. Otherwise just keep streaming.
+        if (this.awaitingFinal) {
+          void this.runCleanupAndClose();
+        } else {
+          // Push the latest accumulated transcript so the client UI sees
+          // committed text even between turns.
+          this.sendClient({ type: "partial", text: this.completedTurns });
+        }
         break;
-      case "error":
+      }
+      case "error": {
+        const code = data.error?.code as string | undefined;
+        // server_vad may have already committed everything; our manual
+        // commit then errors with "buffer too small". That's normal —
+        // finalize with whatever we accumulated.
+        if (code === "input_audio_buffer_commit_empty" && this.awaitingFinal) {
+          void this.runCleanupAndClose();
+          break;
+        }
         this.sendClient({
           type: "error",
           message: data.error?.message ?? "openai error",
         });
         this.close(1011, "upstream error");
         break;
+      }
     }
   }
 
@@ -188,7 +235,7 @@ export class StreamSession {
   private onUpstreamClose(): void {
     // If we never produced a final, surface that to the client so it
     // can fall back to /transcribe HTTP.
-    if (!this.finalRaw && !this.closed) {
+    if (!this.completedTurns && !this.closed) {
       this.sendClient({
         type: "error",
         message: "upstream closed before final transcript",
@@ -198,7 +245,12 @@ export class StreamSession {
   }
 
   private async runCleanupAndClose(): Promise<void> {
-    const raw = this.finalRaw ?? "";
+    if (this.closed) return;
+    // Avoid running twice if both a completed event and the safety-net
+    // timeout fire close together.
+    this.awaitingFinal = false;
+    const raw = (this.completedTurns + " " + this.currentTurnDelta).trim();
+    this.sendClient({ type: "final_raw", text: raw });
     try {
       const clean = await postprocessText(raw, this.style);
       this.sendClient({ type: "final_clean", text: clean });

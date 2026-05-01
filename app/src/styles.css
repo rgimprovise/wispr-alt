@@ -33,11 +33,11 @@ body {
   width: 48px;
   height: 48px;
   flex-shrink: 0;
-  background-image: url('/src/assets/brand/logo-b-mark.svg');
+  background-image: url('/src/assets/brand/logo-a-mark.svg');
   background-size: contain;
   background-repeat: no-repeat;
   background-position: center;
-  filter: drop-shadow(0 2px 8px rgba(21, 23, 26, 0.12));
+  filter: drop-shadow(0 2px 12px rgba(242, 42, 55, 0.30));
 }
 
 .brand__lockup {

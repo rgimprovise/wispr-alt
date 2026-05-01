@@ -176,25 +176,24 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func makeMicKey() -> UIButton {
-        // Belovik dictation key: rounded square on paper-pure with the «Б»
-        // mark centered in graphite as a watermark, whole button at 60%
-        // opacity. No mic emoji — the brand mark IS the affordance.
+        // А-ГОЛОС dictation key: rounded square with the angular «А»
+        // mark in signal red as the affordance. No mic emoji — the
+        // brand mark IS the button.
         let b = UIButton(type: .custom)
         let size = CGSize(width: 60, height: 60)
-        let graphite = UIColor(red: 0x1F/255, green: 0x27/255, blue: 0x33/255, alpha: 1)
-        let bMark = BelovikMark.image(size: size, color: graphite)
-        b.setImage(bMark, for: .normal)
+        let signalRed = UIColor(red: 0xF2/255, green: 0x2A/255, blue: 0x37/255, alpha: 1)
+        let aMark = BelovikMark.image(size: size, color: signalRed)
+        b.setImage(aMark, for: .normal)
         b.imageView?.contentMode = .scaleAspectFit
         b.contentEdgeInsets = UIEdgeInsets(top: 12, left: 12, bottom: 12, right: 12)
-        b.backgroundColor = Pal.keyBg // paper-pure, matches letter keys
+        b.backgroundColor = Pal.keyBg
         b.layer.cornerRadius = 12
         b.layer.borderWidth = 1
-        b.layer.borderColor = UIColor(white: 0, alpha: 0.10).cgColor
-        b.layer.shadowColor = UIColor.black.cgColor
-        b.layer.shadowOpacity = 0.06
-        b.layer.shadowRadius = 2
-        b.layer.shadowOffset = CGSize(width: 0, height: 1)
-        b.alpha = 0.6
+        b.layer.borderColor = UIColor(red: 0xF2/255, green: 0x2A/255, blue: 0x37/255, alpha: 0.40).cgColor
+        b.layer.shadowColor = UIColor(red: 0xF2/255, green: 0x2A/255, blue: 0x37/255, alpha: 1).cgColor
+        b.layer.shadowOpacity = 0.30
+        b.layer.shadowRadius = 8
+        b.layer.shadowOffset = CGSize(width: 0, height: 0)
         b.widthAnchor.constraint(greaterThanOrEqualToConstant: 60).isActive = true
         b.addAction(UIAction { [weak self] _ in self?.openMainAppForDictation() }, for: .touchUpInside)
         return b

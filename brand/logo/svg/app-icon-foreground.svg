@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Android adaptive-icon foreground layer. 108×108 dp viewport with the
+  inner 72×72 dp safe area; we keep А inside ~58 dp so OS-applied masks
+  (circle / rounded-square / squircle) never clip the letter.
+  Background layer is solid #0B0D16 via R.color.ic_launcher_background.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" fill-rule="nonzero">
+  <svg x="25" y="25" width="58" height="58" viewBox="0 0 746 842" preserveAspectRatio="xMidYMid meet">
+    <g transform="translate(40,802) scale(1,-1)">
+      <path fill="#F22A37" d="M340 238H256L322 0H0L160 611L238 305H322L203 762H465L666 0H404L340 238Z"/>
+    </g>
+  </svg>
+</svg>

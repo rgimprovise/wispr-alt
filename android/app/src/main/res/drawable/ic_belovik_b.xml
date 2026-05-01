@@ -1,22 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Belovik «Б» mark for use inside overlay buttons. No built-in tint —
-     callers set color via setColorFilter() / ImageView.imageTintList. -->
+<!-- А-ГОЛОС angular «А» mark for in-app overlay buttons. No built-in
+     tint — callers set color via setColorFilter() / ImageView.imageTintList.
+     Resource name kept as ic_belovik_b for backward compat with existing
+     R.drawable.ic_belovik_b references; will be renamed to ic_a_mark in
+     a follow-up B2 rename pass. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="24dp"
     android:height="24dp"
-    android:viewportWidth="220"
-    android:viewportHeight="230">
-
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 30 38 C 48 26, 78 22, 112 28 C 128 31, 140 34, 152 36 C 138 40, 116 42, 96 42 C 76 42, 56 44, 32 50 C 28 50, 26 47, 28 43 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 76 30 C 84 28, 92 30, 94 38 C 94 60, 88 80, 80 100 C 76 110, 72 122, 70 138 C 68 158, 70 178, 76 196 C 78 202, 76 206, 70 206 C 60 206, 52 200, 50 188 C 48 168, 52 148, 58 128 C 64 108, 70 88, 72 66 C 72 54, 72 44, 70 36 C 70 32, 72 30, 76 30 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 78 38 C 102 32, 134 32, 158 38 C 168 41, 168 50, 158 52 C 136 56, 110 56, 84 52 C 76 50, 74 42, 78 38 Z" />
-    <path
-        android:fillColor="#FFFFFFFF"
-        android:pathData="M 76 96 C 96 86, 130 84, 152 96 C 178 110, 184 148, 168 174 C 150 200, 110 206, 84 192 C 70 184, 64 172, 64 160 C 66 158, 70 158, 72 160 C 78 174, 96 184, 116 184 C 142 184, 162 168, 162 144 C 162 122, 144 106, 120 104 C 104 102, 90 106, 80 112 C 76 114, 72 112, 74 106 C 74 102, 74 98, 76 96 Z" />
+    android:viewportWidth="746"
+    android:viewportHeight="842">
+    <group
+        android:translateX="40"
+        android:translateY="802"
+        android:scaleY="-1">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:pathData="M340,238H256L322,0H0L160,611L238,305H322L203,762H465L666,0H404L340,238Z"/>
+    </group>
 </vector>

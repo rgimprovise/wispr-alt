@@ -314,7 +314,7 @@ class OverlayController(private val service: WisprService) {
         }
         val icon = ImageView(ctx).apply {
             setImageResource(R.drawable.ic_belovik_b)
-            setColorFilter(0xFF1F2733.toInt()) // graphite
+            setColorFilter(0xFFF22A37.toInt()) // signal red
             scaleType = ImageView.ScaleType.FIT_CENTER
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
@@ -497,7 +497,7 @@ class OverlayController(private val service: WisprService) {
         }
         val icon = ImageView(ctx).apply {
             setImageResource(R.drawable.ic_belovik_b)
-            setColorFilter(0xFF1F2733.toInt()) // graphite
+            setColorFilter(0xFFF22A37.toInt()) // signal red
             scaleType = ImageView.ScaleType.FIT_CENTER
             val pad = if (big) dp(12) else dp(10)
             setPadding(pad, pad, pad, pad)

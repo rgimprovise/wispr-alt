@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Composite app icon: charcoal background + red А centred with safe inset.
+  Used to render macOS .icns, Windows .ico, iOS AppIcon 1024×1024,
+  and Android legacy launcher PNGs at all densities.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill-rule="nonzero">
+  <rect width="1024" height="1024" fill="#0B0D16"/>
+  <!-- Embed letter-a glyph viewBox 0 0 746 842; auto-centre+fit into a
+       584-square content area (≈22% inset) via preserveAspectRatio. -->
+  <svg x="220" y="220" width="584" height="584" viewBox="0 0 746 842" preserveAspectRatio="xMidYMid meet">
+    <g transform="translate(40,802) scale(1,-1)">
+      <path fill="#F22A37" d="M340 238H256L322 0H0L160 611L238 305H322L203 762H465L666 0H404L340 238Z"/>
+    </g>
+  </svg>
+</svg>

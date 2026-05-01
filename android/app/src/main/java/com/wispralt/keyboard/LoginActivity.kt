@@ -76,7 +76,7 @@ class LoginActivity : AppCompatActivity() {
 
         root.addView(card(
             title = "Вход",
-            body = "Введите email — пришлём 6-значный код.",
+            body = "Введите email — продолжим в зависимости от того, есть ли у вас пароль.",
         ))
         root.addView(spacer(dp(20)))
 
@@ -90,7 +90,7 @@ class LoginActivity : AppCompatActivity() {
         val errorView = errorRow()
         root.addView(errorView)
 
-        val submit = primaryButton("Прислать код") { /* set below */ }
+        val submit = primaryButton("Продолжить") { /* set below */ }
         root.addView(submit)
 
         submit.setOnClickListener {
@@ -101,18 +101,89 @@ class LoginActivity : AppCompatActivity() {
             }
             errorView.hide()
             submit.isEnabled = false
-            submit.text = "Отправляем…"
+            submit.text = "Проверяем…"
             scope.launch {
-                val res = withContext(Dispatchers.IO) { AuthClient.requestCode(email) }
+                val status = withContext(Dispatchers.IO) { AuthClient.checkEmail(email) }
                 submit.isEnabled = true
-                submit.text = "Прислать код"
-                when (res) {
+                submit.text = "Продолжить"
+                when (status) {
                     is AuthClient.Result.Ok -> {
                         pendingEmail = email
-                        renderCodeStep()
+                        if (status.value.hasPassword) {
+                            renderPasswordStep()
+                        } else {
+                            requestOtpAndShowCodeStep(errorView)
+                        }
+                    }
+                    is AuthClient.Result.Err -> errorView.show(status.message)
+                }
+            }
+        }
+    }
+
+    private fun renderPasswordStep() {
+        root.removeAllViews()
+        root.addView(displayHeadline("Введите пароль"))
+        root.addView(spacer(dp(8)))
+        root.addView(subtext("Аккаунт $pendingEmail."))
+        root.addView(spacer(dp(32)))
+
+        val pwField = textField(
+            hint = "Пароль",
+            inputType = InputType.TYPE_CLASS_TEXT or InputType.TYPE_TEXT_VARIATION_PASSWORD,
+        )
+        root.addView(pwField)
+        root.addView(spacer(dp(16)))
+
+        val errorView = errorRow()
+        root.addView(errorView)
+
+        val submit = primaryButton("Войти") { /* set below */ }
+        root.addView(submit)
+        root.addView(spacer(dp(8)))
+
+        root.addView(secondaryButton("Войти по коду из почты") {
+            requestOtpAndShowCodeStep(errorView)
+        })
+        root.addView(secondaryButton("Указать другой email") {
+            pendingEmail = ""
+            renderEmailStep()
+        })
+
+        submit.setOnClickListener {
+            val password = pwField.text.toString()
+            if (password.isEmpty()) return@setOnClickListener
+            errorView.hide()
+            submit.isEnabled = false
+            submit.text = "Входим…"
+            scope.launch {
+                val res = withContext(Dispatchers.IO) {
+                    AuthClient.login(pendingEmail, password)
+                }
+                submit.isEnabled = true
+                submit.text = "Войти"
+                when (res) {
+                    is AuthClient.Result.Ok -> {
+                        AuthStore.save(this@LoginActivity, res.value.token, res.value.email)
+                        finish()
                     }
                     is AuthClient.Result.Err -> errorView.show(res.message)
                 }
+            }
+        }
+    }
+
+    /**
+     * Sends an OTP code to [pendingEmail] and routes to the code step on
+     * success, surfacing failures in [errorView]. Used both as the default
+     * path for password-less accounts and as the "забыли пароль" fallback.
+     */
+    private fun requestOtpAndShowCodeStep(errorView: TextView) {
+        scope.launch {
+            val res = withContext(Dispatchers.IO) { AuthClient.requestCode(pendingEmail) }
+            when (res) {
+                is AuthClient.Result.Ok -> renderCodeStep()
+                is AuthClient.Result.Err -> errorView.show(res.message)
             }
         }
     }

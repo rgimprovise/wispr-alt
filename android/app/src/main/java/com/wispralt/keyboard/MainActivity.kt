@@ -422,7 +422,17 @@ class MainActivity : AppCompatActivity() {
             setTextSize(TypedValue.COMPLEX_UNIT_SP, 13f)
         })
         card.addView(spacer(dp(12)))
+        card.addView(secondaryButton("Установить / сменить пароль") {
+            startActivity(Intent(this, SetPasswordActivity::class.java))
+        })
+        card.addView(spacer(dp(8)))
         card.addView(secondaryButton("Выйти") {
+            // Best-effort server logout; offline-tolerant. Runs on a
+            // background thread because OkHttp forbids network on main.
+            val token = AuthStore.token(this)
+            if (token != null) {
+                Thread { AuthClient.logout(token) }.start()
+            }
             AuthStore.clear(this)
             // Stop the foreground service too — without a token it can't
             // hit /transcribe anyway, and re-login will restart it.

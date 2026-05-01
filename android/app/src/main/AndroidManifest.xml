@@ -38,6 +38,10 @@
             android:name=".LoginActivity"
             android:exported="false" />
 
+        <activity
+            android:name=".SetPasswordActivity"
+            android:exported="false" />
+
         <!-- Foreground service: owns the overlay + recording lifecycle.
              Started when the user taps the QS tile, notification action,
              or the launcher's "Dictate now" shortcut. -->

@@ -7,11 +7,13 @@ struct LoginView: View {
 
     private enum Step {
         case email
+        case password
         case code
     }
 
     @State private var step: Step = .email
     @State private var email: String = ""
+    @State private var password: String = ""
     @State private var code: String = ""
     @State private var pendingEmail: String = ""
     @State private var errorMessage: String?
@@ -28,8 +30,9 @@ struct LoginView: View {
 
                     Group {
                         switch step {
-                        case .email: emailStep
-                        case .code:  codeStep
+                        case .email:    emailStep
+                        case .password: passwordStep
+                        case .code:     codeStep
                         }
                     }
                 }
@@ -54,7 +57,7 @@ struct LoginView: View {
 
     private var emailStep: some View {
         VStack(alignment: .leading, spacing: 16) {
-            card(title: "Вход", body: "Введите email — пришлём 6-значный код.")
+            card(title: "Вход", body: "Введите email — продолжим в зависимости от того, есть ли у вас пароль.")
 
             TextField("you@example.com", text: $email)
                 .textFieldStyle(.plain)
@@ -74,7 +77,7 @@ struct LoginView: View {
             errorRow
 
             Button(action: submitEmail) {
-                Text(inFlight ? "Отправляем…" : "Прислать код")
+                Text(inFlight ? "Проверяем…" : "Продолжить")
                     .font(.belovikUI(15, weight: .semibold))
                     .foregroundStyle(BelovikColor.textInverse)
                     .frame(maxWidth: .infinity)
@@ -97,10 +100,111 @@ struct LoginView: View {
         Task {
             defer { inFlight = false }
             do {
-                try await AuthClient.requestCode(email: normalized)
+                let status = try await AuthClient.checkEmail(email: normalized)
                 pendingEmail = normalized
-                code = ""
-                step = .code
+                if status.hasPassword {
+                    password = ""
+                    step = .password
+                } else {
+                    try await sendOtp(to: normalized)
+                }
+            } catch let err as AuthClient.AuthError {
+                errorMessage = err.errorDescription
+            } catch {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    /// Sends an OTP and routes to the code step. Used for password-less
+    /// accounts and as the «forgot password» fallback.
+    private func sendOtp(to address: String) async throws {
+        try await AuthClient.requestCode(email: address)
+        code = ""
+        step = .code
+    }
+
+    // ─── Step 1b — password ──────────────────────────────────────────────
+
+    private var passwordStep: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            VStack(alignment: .leading, spacing: 6) {
+                Text("Введите пароль")
+                    .font(.belovikDisplay(28))
+                    .foregroundStyle(BelovikColor.textPrimary)
+                Text("Аккаунт \(pendingEmail).")
+                    .font(.belovikUI(14))
+                    .foregroundStyle(BelovikColor.textSecondary)
+            }
+
+            SecureField("Пароль", text: $password)
+                .textFieldStyle(.plain)
+                .textContentType(.password)
+                .font(.belovikUI(16))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .padding(14)
+                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 14))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14)
+                        .stroke(BelovikColor.borderSubtle, lineWidth: 1)
+                )
+
+            errorRow
+
+            Button(action: submitPassword) {
+                Text(inFlight ? "Входим…" : "Войти")
+                    .font(.belovikUI(15, weight: .semibold))
+                    .foregroundStyle(BelovikColor.textInverse)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 16)
+                    .background(BelovikColor.graphite, in: RoundedRectangle(cornerRadius: 14))
+            }
+            .disabled(inFlight || password.isEmpty)
+            .opacity(inFlight ? 0.6 : 1)
+
+            Button("Войти по коду из почты") {
+                guard !pendingEmail.isEmpty else { return }
+                errorMessage = nil
+                inFlight = true
+                Task {
+                    defer { inFlight = false }
+                    do {
+                        try await sendOtp(to: pendingEmail)
+                    } catch let err as AuthClient.AuthError {
+                        errorMessage = err.errorDescription
+                    } catch {
+                        errorMessage = error.localizedDescription
+                    }
+                }
+            }
+            .font(.belovikUI(14))
+            .foregroundStyle(BelovikColor.textSecondary)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+
+            Button("Указать другой email") {
+                pendingEmail = ""
+                password = ""
+                errorMessage = nil
+                step = .email
+            }
+            .font(.belovikUI(14))
+            .foregroundStyle(BelovikColor.textSecondary)
+            .frame(maxWidth: .infinity)
+        }
+    }
+
+    private func submitPassword() {
+        guard !password.isEmpty else { return }
+        errorMessage = nil
+        inFlight = true
+        Task {
+            defer { inFlight = false }
+            do {
+                let session = try await AuthClient.login(
+                    email: pendingEmail, password: password
+                )
+                auth.save(token: session.token, email: session.email)
             } catch let err as AuthClient.AuthError {
                 errorMessage = err.errorDescription
             } catch {

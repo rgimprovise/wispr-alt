@@ -3,6 +3,7 @@ import AVFoundation
 
 struct OnboardingView: View {
     @State private var micGranted = false
+    @State private var showingSetPassword = false
     @EnvironmentObject private var auth: AuthStore
 
     var body: some View {
@@ -63,6 +64,10 @@ struct OnboardingView: View {
             }
         }
         .onAppear { refreshMicStatus() }
+        .sheet(isPresented: $showingSetPassword) {
+            SetPasswordView()
+                .environmentObject(auth)
+        }
     }
 
     private func stepCard(
@@ -147,14 +152,29 @@ struct OnboardingView: View {
             Text(auth.email ?? "—")
                 .font(.belovikUI(15))
                 .foregroundStyle(BelovikColor.textSecondary)
-            Button("Выйти") {
-                auth.clear()
+            HStack(spacing: 12) {
+                Button("Установить / сменить пароль") {
+                    showingSetPassword = true
+                }
+                .font(.belovikUI(13, weight: .semibold))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
+
+                Button("Выйти") {
+                    if let token = auth.token {
+                        // Best-effort server logout. Fire and forget.
+                        Task { await AuthClient.logout(token: token) }
+                    }
+                    auth.clear()
+                }
+                .font(.belovikUI(13, weight: .semibold))
+                .foregroundStyle(BelovikColor.textPrimary)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 10)
+                .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
             }
-            .font(.belovikUI(14, weight: .semibold))
-            .foregroundStyle(BelovikColor.textPrimary)
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
-            .background(BelovikColor.surfaceSunk, in: RoundedRectangle(cornerRadius: 12))
         }
         .padding(20)
         .frame(maxWidth: .infinity, alignment: .leading)

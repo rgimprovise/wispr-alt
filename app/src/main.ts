@@ -166,6 +166,20 @@ async function tickSnapshot() {
 async function startRecording() {
   log("startRecording: enter");
   try {
+    // Recover from a desynced state where Rust thinks it's recording
+    // (e.g. leaked from a prior HMR run or a crashed teardown) but the
+    // JS UI is back at idle. Force-stop, ignore the result.
+    try {
+      const wasRecording = (await invoke("is_recording")) as boolean;
+      if (wasRecording) {
+        log("startRecording: clearing stale Rust recording");
+        try { await invoke("stop_recording"); } catch { /* ignore */ }
+      }
+    } catch { /* ignore */ }
+
+    // Close any leaked stream WS from prior failed attempts.
+    closeStreamWs();
+
     lastPartial = "";
     snapshotSeq = 0;
     snapshotInFlight = false;
@@ -188,15 +202,11 @@ async function startRecording() {
     await setOverlayVisible(true);
     log(streamUsable ? "recording started (streaming)" : "recording started (snapshot)");
   } catch (err) {
-    const msg = String(err);
-    log(`startRecording FAILED: ${msg}`);
-    // "already recording" = a duplicate startRecording fired (HMR or
-    // double-press). Rust is fine; don't clobber state back to idle or
-    // we'll cascade — the next press would call startRecording again.
-    if (!msg.includes("already recording")) {
-      setStatus("idle");
-      closeStreamWs();
-    }
+    log(`startRecording FAILED: ${err}`);
+    setStatus("idle");
+    closeStreamWs();
+    // Make sure Rust isn't left recording so the next press starts clean.
+    try { await invoke("stop_recording"); } catch { /* noop */ }
   }
 }
 

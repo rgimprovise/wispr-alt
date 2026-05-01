@@ -13,6 +13,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS users (
     id TEXT PRIMARY KEY,
     email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+    password_hash TEXT,
     created_at INTEGER NOT NULL,
     last_login_at INTEGER
   );
@@ -32,9 +33,20 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_magic_links_expires ON magic_links(expires_at);
 `);
 
+// Migrate existing v0.3.0 deployments that have a users table without
+// password_hash. SQLite has no `ADD COLUMN IF NOT EXISTS`, so introspect
+// first. Idempotent: safe to run on every boot.
+{
+  const cols = db.query("PRAGMA table_info(users)").all() as Array<{ name: string }>;
+  if (!cols.some((c) => c.name === "password_hash")) {
+    db.exec("ALTER TABLE users ADD COLUMN password_hash TEXT");
+  }
+}
+
 export type User = {
   id: string;
   email: string;
+  password_hash: string | null;
   created_at: number;
   last_login_at: number | null;
 };
@@ -63,7 +75,23 @@ export function findOrCreateUser(email: string): User {
     "INSERT INTO users (id, email, created_at) VALUES (?, ?, ?)",
     [id, normalized, now]
   );
-  return { id, email: normalized, created_at: now, last_login_at: null };
+  return {
+    id,
+    email: normalized,
+    password_hash: null,
+    created_at: now,
+    last_login_at: null,
+  };
+}
+
+export function findUserByEmail(email: string): User | null {
+  return db
+    .query("SELECT * FROM users WHERE email = ?")
+    .get(email.trim().toLowerCase()) as User | null;
+}
+
+export function setUserPasswordHash(userId: string, hash: string): void {
+  db.run("UPDATE users SET password_hash = ? WHERE id = ?", [hash, userId]);
 }
 
 export function markUserLogin(userId: string): void {

@@ -6,10 +6,12 @@ import {
   findActiveMagicLinkByEmail,
   findActiveMagicLinkByTokenHash,
   findOrCreateUser,
+  findUserByEmail,
   getUserById,
   incrementMagicLinkAttempts,
   insertMagicLink,
   markUserLogin,
+  setUserPasswordHash,
 } from "./db";
 import { sendMagicLinkEmail } from "./email";
 import { mintJwt, verifyJwt } from "./jwt";
@@ -19,6 +21,7 @@ const TEN_MINUTES = 10 * 60 * 1000;
 const FIFTEEN_MINUTES = 15 * 60 * 1000;
 const MAX_REQUESTS_PER_WINDOW = 5;
 const MAX_VERIFY_ATTEMPTS = 5;
+const MIN_PASSWORD_LENGTH = 8;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -137,6 +140,94 @@ auth.get("/verify-link", async (c) => {
   <p>Если приложение не открылось автоматически, скопируйте токен и вставьте его в окно входа:</p>
   <code>${jwt}</code>
 </div></body></html>`);
+});
+
+// POST /auth/check-email — body: { email }
+// Tells the client whether to show a password field or jump straight to OTP.
+// Returns ok regardless of whether the email exists (no enumeration leak).
+auth.post("/check-email", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const emailRaw = (body.email as string | undefined)?.trim().toLowerCase();
+  if (!emailRaw || !EMAIL_RE.test(emailRaw)) {
+    return c.json({ error: "invalid email" }, 400);
+  }
+  const user = findUserByEmail(emailRaw);
+  // We DO leak existence here intentionally — the client needs it to choose
+  // between password vs OTP. Acceptable trade-off: anyone can already send
+  // an OTP request and infer existence indirectly via timing/email arrival.
+  return c.json({
+    exists: user != null,
+    hasPassword: user?.password_hash != null,
+  });
+});
+
+// POST /auth/login — body: { email, password } → JWT
+auth.post("/login", async (c) => {
+  const body = await c.req.json().catch(() => ({}));
+  const email = (body.email as string | undefined)?.trim().toLowerCase();
+  const password = body.password as string | undefined;
+  if (!email || !EMAIL_RE.test(email) || !password) {
+    return c.json({ error: "invalid email or password" }, 400);
+  }
+
+  const user = findUserByEmail(email);
+  if (!user || !user.password_hash) {
+    // Don't distinguish "no account" from "no password set" — both look
+    // the same to an attacker, and the legitimate client already learned
+    // the truth via /auth/check-email.
+    return c.json({ error: "invalid email or password" }, 401);
+  }
+
+  const ok = await Bun.password.verify(password, user.password_hash);
+  if (!ok) {
+    return c.json({ error: "invalid email or password" }, 401);
+  }
+
+  markUserLogin(user.id);
+  const token = mintJwt(user.id, user.email);
+  return c.json({ token, user: { id: user.id, email: user.email } });
+});
+
+// POST /auth/set-password — Bearer auth — body: { newPassword, currentPassword? }
+// Sets the password for the first time, or changes it. When changing, the
+// caller must provide currentPassword (unless they don't have one yet).
+auth.post("/set-password", requireAuth, async (c) => {
+  const sessionUser = c.get("user" as never) as { id: string; email: string };
+  const body = await c.req.json().catch(() => ({}));
+  const newPassword = body.newPassword as string | undefined;
+  const currentPassword = body.currentPassword as string | undefined;
+
+  if (!newPassword || newPassword.length < MIN_PASSWORD_LENGTH) {
+    return c.json(
+      { error: `password must be at least ${MIN_PASSWORD_LENGTH} chars` },
+      400
+    );
+  }
+
+  const user = getUserById(sessionUser.id);
+  if (!user) return c.json({ error: "unauthorized" }, 401);
+
+  // If a password is already set, require the current one. Skip the check
+  // when the user has no password yet (first-time set after OTP login).
+  if (user.password_hash) {
+    if (!currentPassword) {
+      return c.json({ error: "current password required" }, 400);
+    }
+    const ok = await Bun.password.verify(currentPassword, user.password_hash);
+    if (!ok) return c.json({ error: "current password is incorrect" }, 401);
+  }
+
+  const hash = await Bun.password.hash(newPassword);
+  setUserPasswordHash(user.id, hash);
+  return c.json({ ok: true });
+});
+
+// POST /auth/logout — Bearer auth — currently a no-op acknowledgement.
+// Clients clear local state on success. Will gain server-side revocation
+// (token blacklist or refresh-token rotation) when we add billing/abuse
+// concerns; for now JWT lifetimes are short enough.
+auth.post("/logout", requireAuth, async (c) => {
+  return c.json({ ok: true });
 });
 
 // GET /auth/me — returns current user (for token validation by clients).

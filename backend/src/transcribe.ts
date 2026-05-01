@@ -216,6 +216,37 @@ export async function transcribe(opts: TranscribeOpts): Promise<TranscribeResult
  * Saves ~1-2s round-trip latency on quick "yes/no/ok" dictations.
  */
 /**
+ * Just the transcription step — no cleanup. Used by the streaming-final
+ * handler so it can yield the raw text before kicking off the LLM
+ * cleanup stream.
+ */
+export async function transcribeOnly(
+  audio: File,
+  language?: string,
+): Promise<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY is not set");
+  const form = new FormData();
+  form.append("file", audio, audio.name || "audio.wav");
+  form.append("model", TRANSCRIBE_MODEL);
+  form.append("response_format", "json");
+  form.append("temperature", "0");
+  if (!language || language.toLowerCase().startsWith("ru")) {
+    form.append("prompt", TRANSCRIBE_PROMPT_RU);
+  }
+  if (language) form.append("language", language);
+  const res = await fetch(
+    "https://api.openai.com/v1/audio/transcriptions",
+    { method: "POST", headers: { Authorization: `Bearer ${apiKey}` }, body: form }
+  );
+  if (!res.ok) {
+    throw new Error(`OpenAI transcribe ${res.status}: ${await res.text()}`);
+  }
+  const json = (await res.json()) as { text: string };
+  return json.text.trim();
+}
+
+/**
  * Public cleanup helper used by both the HTTP /transcribe handler and
  * the streaming proxy. Mirrors the postprocess branch of `transcribe()`.
  */
@@ -237,6 +268,67 @@ function quickNormalize(text: string): string {
   let t = text.trim().replace(/\s+/g, " ");
   if (t.length > 0) t = (t[0]!).toUpperCase() + t.slice(1);
   return t;
+}
+
+/**
+ * Streaming variant of cleanWithGpt — yields text chunks as the model
+ * generates them. Used by the SSE/NDJSON transcribe path so the overlay
+ * updates incrementally instead of blocking on the full LLM response.
+ */
+export async function* cleanWithGptStream(
+  raw: string,
+  style: Style,
+): AsyncGenerator<string> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) throw new Error("OPENAI_API_KEY not set");
+  const system = `${COMMON_RULES}\n\n${STYLE_RULES[style]}`;
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: LLM_MODEL,
+      max_completion_tokens: 768,
+      stream: true,
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: raw },
+      ],
+    }),
+  });
+
+  if (!res.ok || !res.body) {
+    const errText = await res.text().catch(() => "");
+    throw new Error(`OpenAI cleanup ${res.status}: ${errText}`);
+  }
+
+  // OpenAI's chat/completions stream is SSE: lines like `data: {json}` and
+  // `data: [DONE]` separated by blank lines. We split on newlines and parse
+  // each JSON, yielding the delta content as we go.
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (!line.startsWith("data: ")) continue;
+      const payload = line.slice(6);
+      if (payload === "[DONE]") return;
+      try {
+        const json = JSON.parse(payload);
+        const delta = json.choices?.[0]?.delta?.content;
+        if (typeof delta === "string" && delta.length > 0) yield delta;
+      } catch { /* ignore malformed line */ }
+    }
+  }
 }
 
 async function cleanWithGpt(

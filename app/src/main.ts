@@ -111,17 +111,57 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   const form = new FormData();
   form.append("audio", blob, "final.wav");
   form.append("postprocess", "true");
-  // Read current style from Rust settings (persisted across launches).
   try {
     const style = (await invoke("get_style")) as string;
     if (style) form.append("style", style);
-  } catch {
-    /* style optional; backend defaults to "clean" */
-  }
-  const res = await authedFetch("/transcribe", { method: "POST", body: form });
+  } catch { /* default */ }
+
+  // Stream mode (?stream=1): server sends NDJSON
+  //   {type:"raw",text}      ~1-2s after stop, raw transcription done
+  //   {type:"delta",text}    repeated, LLM cleanup chunks
+  //   {type:"done",text}     full clean text, ready to paste
+  // Updating the overlay on each event makes the wall-clock identical
+  // but the perceived latency much shorter — text starts streaming in
+  // immediately after stop instead of going dark for 4-6s.
+  const res = await authedFetch("/transcribe?stream=1", {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
-  const json = (await res.json()) as { clean: string };
-  return json.clean.trim();
+  if (!res.body) throw new Error("no response body");
+
+  const reader = res.body.getReader();
+  const dec = new TextDecoder();
+  let buf = "";
+  let raw = "";
+  let clean = "";
+  while (true) {
+    const { value, done } = await reader.read();
+    if (done) break;
+    buf += dec.decode(value, { stream: true });
+    let idx: number;
+    while ((idx = buf.indexOf("\n")) >= 0) {
+      const line = buf.slice(0, idx).trim();
+      buf = buf.slice(idx + 1);
+      if (!line) continue;
+      let ev: { type: string; text?: string; message?: string };
+      try { ev = JSON.parse(line); } catch { continue; }
+      if (ev.type === "raw") {
+        raw = ev.text ?? "";
+        // Show raw text as soon as transcription finishes so the user
+        // sees something immediately. Cleanup deltas will overwrite.
+        updateOverlay("transcribing", raw);
+      } else if (ev.type === "delta") {
+        clean += ev.text ?? "";
+        updateOverlay("transcribing", clean);
+      } else if (ev.type === "done") {
+        clean = (ev.text ?? clean).trim();
+      } else if (ev.type === "error") {
+        throw new Error(ev.message ?? "transcribe error");
+      }
+    }
+  }
+  return clean.trim() || raw.trim();
 }
 
 async function tickSnapshot() {

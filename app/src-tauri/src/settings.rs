@@ -13,6 +13,16 @@ pub struct Settings {
     /// (clean / business / casual / brief / telegram / email / task).
     #[serde(default = "default_style")]
     pub style: String,
+    /// JWT issued by /auth/verify. None until the user signs in. Stored
+    /// in plaintext settings.json for now — the file already lives in the
+    /// app's per-user data dir, and tokens are short-lived (30d, will be
+    /// server-revocable). Move to OS keychain when threat model demands it.
+    #[serde(default)]
+    pub auth_token: Option<String>,
+    /// Email of the signed-in user. Mirrored from the JWT so the UI can
+    /// show "Logged in as …" without decoding the token in JS.
+    #[serde(default)]
+    pub auth_email: Option<String>,
 }
 
 fn default_style() -> String {
@@ -24,6 +34,8 @@ impl Default for Settings {
         Self {
             hotkey: "F5".to_string(),
             style: default_style(),
+            auth_token: None,
+            auth_email: None,
         }
     }
 }

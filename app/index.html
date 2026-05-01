@@ -18,7 +18,64 @@
     <script type="module" src="/src/main.ts" defer></script>
   </head>
   <body>
-    <main class="container">
+    <!-- Auth gate: hidden once signed in. Two steps: enter email, then code. -->
+    <main class="container auth-gate" id="auth-gate" hidden>
+      <header class="brand">
+        <div class="brand__mark" aria-hidden="true"></div>
+        <div class="brand__lockup">
+          <div class="t-h1">Беловик</div>
+          <div class="t-caption">Голосовой интерфейс для работы с текстом</div>
+        </div>
+      </header>
+
+      <section class="auth" id="auth-step-email">
+        <h2 class="t-h2">Вход</h2>
+        <p class="hint">Введите email — пришлём 6-значный код для входа.</p>
+        <form id="auth-email-form" class="auth__form">
+          <input
+            type="email"
+            id="auth-email"
+            class="auth__input"
+            placeholder="you@example.com"
+            autocomplete="email"
+            required
+          />
+          <button type="submit" class="btn btn--primary" id="auth-email-submit">
+            Прислать код
+          </button>
+        </form>
+        <div class="auth__error" id="auth-email-error" hidden></div>
+      </section>
+
+      <section class="auth" id="auth-step-code" hidden>
+        <h2 class="t-h2">Введите код</h2>
+        <p class="hint">
+          Код отправлен на <span id="auth-email-display"></span>. Действует 10 минут.
+        </p>
+        <form id="auth-code-form" class="auth__form">
+          <input
+            type="text"
+            id="auth-code"
+            class="auth__input auth__input--code"
+            placeholder="123456"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+            maxlength="6"
+            pattern="\d{6}"
+            required
+          />
+          <button type="submit" class="btn btn--primary" id="auth-code-submit">
+            Войти
+          </button>
+        </form>
+        <div class="auth__error" id="auth-code-error" hidden></div>
+        <button type="button" class="btn btn--secondary auth__back" id="auth-back">
+          Указать другой email
+        </button>
+      </section>
+    </main>
+
+    <main class="container" id="app-main" hidden>
       <header class="brand">
         <div class="brand__mark" aria-hidden="true"></div>
         <div class="brand__lockup">
@@ -46,6 +103,13 @@
           <button id="hotkey-picker" class="btn btn--secondary hotkey-picker">
             <span id="hotkey-picker-label">F5</span>
           </button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-row__label">
+            <div class="setting-row__title">Аккаунт</div>
+            <div class="setting-row__hint" id="account-email">—</div>
+          </div>
+          <button id="logout-btn" class="btn btn--secondary">Выйти</button>
         </div>
         <div class="setting-row">
           <div class="setting-row__label">

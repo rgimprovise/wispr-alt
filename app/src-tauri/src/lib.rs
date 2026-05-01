@@ -94,6 +94,50 @@ fn get_style(app: tauri::AppHandle) -> String {
     settings::load(&app).style
 }
 
+// ─── Auth session storage ─────────────────────────────────────────────────
+//
+// All HTTP to /auth/* lives in the JS layer (it already has BACKEND_URL
+// and fetch). These Rust commands just persist the resulting JWT + email
+// to the same settings.json other prefs use.
+
+/// Returns the stored JWT (or null if not signed in). Frontend reads this
+/// once on startup and attaches it as `Authorization: Bearer …` to every
+/// /transcribe request.
+#[tauri::command]
+fn get_auth_token(app: tauri::AppHandle) -> Option<String> {
+    settings::load(&app).auth_token
+}
+
+/// Returns the email of the signed-in user (for the "logged in as" UI).
+#[tauri::command]
+fn get_auth_email(app: tauri::AppHandle) -> Option<String> {
+    settings::load(&app).auth_email
+}
+
+#[tauri::command]
+fn set_auth_session(
+    app: tauri::AppHandle,
+    token: String,
+    email: String,
+) -> Result<(), String> {
+    let mut current = settings::load(&app);
+    current.auth_token = Some(token);
+    current.auth_email = Some(email);
+    settings::save(&app, &current)?;
+    eprintln!("[auth] session stored");
+    Ok(())
+}
+
+#[tauri::command]
+fn clear_auth_session(app: tauri::AppHandle) -> Result<(), String> {
+    let mut current = settings::load(&app);
+    current.auth_token = None;
+    current.auth_email = None;
+    settings::save(&app, &current)?;
+    eprintln!("[auth] session cleared");
+    Ok(())
+}
+
 /// Persists the user's chosen cleanup style. Validates against the known
 /// list; unknown values are rejected.
 #[tauri::command]
@@ -341,7 +385,11 @@ pub fn run() {
             get_hotkey,
             set_hotkey,
             get_style,
-            set_style
+            set_style,
+            get_auth_token,
+            get_auth_email,
+            set_auth_session,
+            clear_auth_session
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")

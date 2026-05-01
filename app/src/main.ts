@@ -71,16 +71,32 @@ function updateOverlay(s: RecordingState, text: string) {
   emit("overlay-state", { state: s, text });
 }
 
+// In-memory mirror of the JWT loaded from Rust settings on startup. Kept
+// here so the hot path (snapshot tick → /transcribe) doesn't pay an IPC
+// round-trip per request. Updated by signIn() / signOut().
+let authToken: string | null = null;
+
+async function authedFetch(path: string, init: RequestInit): Promise<Response> {
+  if (!authToken) throw new Error("not signed in");
+  const headers = new Headers(init.headers);
+  headers.set("Authorization", `Bearer ${authToken}`);
+  const res = await fetch(`${BACKEND_URL}${path}`, { ...init, headers });
+  if (res.status === 401) {
+    // Token expired or revoked. Drop session and force re-auth.
+    log("session expired — please sign in again");
+    await signOut();
+    throw new Error("session expired");
+  }
+  return res;
+}
+
 async function transcribePartial(wavBytes: number[]): Promise<string | null> {
   if (wavBytes.length < 4000) return null; // too short, skip
   const blob = new Blob([new Uint8Array(wavBytes)], { type: "audio/wav" });
   const form = new FormData();
   form.append("audio", blob, "partial.wav");
   form.append("postprocess", "false");
-  const res = await fetch(`${BACKEND_URL}/transcribe`, {
-    method: "POST",
-    body: form,
-  });
+  const res = await authedFetch("/transcribe", { method: "POST", body: form });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { raw: string };
   return json.raw.trim();
@@ -98,10 +114,7 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   } catch {
     /* style optional; backend defaults to "clean" */
   }
-  const res = await fetch(`${BACKEND_URL}/transcribe`, {
-    method: "POST",
-    body: form,
-  });
+  const res = await authedFetch("/transcribe", { method: "POST", body: form });
   if (!res.ok) throw new Error(`${res.status}: ${await res.text()}`);
   const json = (await res.json()) as { clean: string };
   return json.clean.trim();
@@ -193,7 +206,22 @@ async function onHotkey() {
 
 window.addEventListener("DOMContentLoaded", async () => {
   setStatus("idle");
+  wireAuth();
 
+  // Decide which surface to show: signed-in user → main app; otherwise
+  // the email-entry step of the auth gate.
+  const stored = (await invoke("get_auth_token")) as string | null;
+  const email = (await invoke("get_auth_email")) as string | null;
+  if (stored && email) {
+    authToken = stored;
+    showMain(email);
+    initMainApp();
+  } else {
+    showAuthGate();
+  }
+});
+
+async function initMainApp() {
   // Check Accessibility permission status and surface it to the log so the
   // user can tell at a glance if paste will work. The same call also
   // triggers the native prompt if we're not yet trusted.
@@ -228,7 +256,10 @@ window.addEventListener("DOMContentLoaded", async () => {
     }
   });
 
-  // Load current hotkey and wire up the picker.
+  document.querySelector("#logout-btn")?.addEventListener("click", async () => {
+    await signOut();
+  });
+
   try {
     const current = (await invoke("get_hotkey")) as string;
     updateHotkeyUI(current);
@@ -237,7 +268,6 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
   wireHotkeyPicker();
 
-  // Load current style and wire up the dropdown.
   try {
     const current = (await invoke("get_style")) as string;
     updateStyleUI(current);
@@ -245,7 +275,149 @@ window.addEventListener("DOMContentLoaded", async () => {
     log(`failed to load style: ${err}`);
   }
   wireStylePicker();
-});
+}
+
+// ─── Auth UI ───────────────────────────────────────────────────────────────
+
+function showAuthGate(): void {
+  document.getElementById("auth-gate")?.removeAttribute("hidden");
+  document.getElementById("app-main")?.setAttribute("hidden", "");
+  showAuthStep("email");
+}
+
+function showMain(email: string): void {
+  document.getElementById("auth-gate")?.setAttribute("hidden", "");
+  document.getElementById("app-main")?.removeAttribute("hidden");
+  const acc = document.getElementById("account-email");
+  if (acc) acc.textContent = email;
+}
+
+function showAuthStep(step: "email" | "code"): void {
+  const emailStep = document.getElementById("auth-step-email");
+  const codeStep = document.getElementById("auth-step-code");
+  if (step === "email") {
+    emailStep?.removeAttribute("hidden");
+    codeStep?.setAttribute("hidden", "");
+    (document.getElementById("auth-email") as HTMLInputElement | null)?.focus();
+  } else {
+    emailStep?.setAttribute("hidden", "");
+    codeStep?.removeAttribute("hidden");
+    (document.getElementById("auth-code") as HTMLInputElement | null)?.focus();
+  }
+}
+
+function showAuthError(target: "email" | "code", message: string): void {
+  const el = document.getElementById(`auth-${target}-error`);
+  if (!el) return;
+  el.textContent = message;
+  el.removeAttribute("hidden");
+}
+
+function clearAuthErrors(): void {
+  for (const id of ["auth-email-error", "auth-code-error"]) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.textContent = "";
+      el.setAttribute("hidden", "");
+    }
+  }
+}
+
+function wireAuth(): void {
+  let pendingEmail = "";
+
+  const emailForm = document.getElementById("auth-email-form") as HTMLFormElement | null;
+  emailForm?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    clearAuthErrors();
+    const input = document.getElementById("auth-email") as HTMLInputElement;
+    const submit = document.getElementById("auth-email-submit") as HTMLButtonElement;
+    const email = input.value.trim().toLowerCase();
+    if (!email) return;
+    submit.disabled = true;
+    submit.textContent = "Отправляем…";
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/request`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email }),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      pendingEmail = email;
+      const display = document.getElementById("auth-email-display");
+      if (display) display.textContent = email;
+      showAuthStep("code");
+    } catch (err) {
+      showAuthError("email", err instanceof Error ? err.message : String(err));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Прислать код";
+    }
+  });
+
+  const codeForm = document.getElementById("auth-code-form") as HTMLFormElement | null;
+  codeForm?.addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    clearAuthErrors();
+    const input = document.getElementById("auth-code") as HTMLInputElement;
+    const submit = document.getElementById("auth-code-submit") as HTMLButtonElement;
+    const code = input.value.trim();
+    if (!/^\d{6}$/.test(code)) {
+      showAuthError("code", "Код состоит из 6 цифр");
+      return;
+    }
+    submit.disabled = true;
+    submit.textContent = "Проверяем…";
+    try {
+      const res = await fetch(`${BACKEND_URL}/auth/verify`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: pendingEmail, code }),
+      });
+      const body = (await res.json().catch(() => ({}))) as {
+        token?: string;
+        user?: { email: string };
+        error?: string;
+      };
+      if (!res.ok || !body.token || !body.user) {
+        throw new Error(body.error ?? `HTTP ${res.status}`);
+      }
+      authToken = body.token;
+      await invoke("set_auth_session", {
+        token: body.token,
+        email: body.user.email,
+      });
+      showMain(body.user.email);
+      initMainApp();
+    } catch (err) {
+      showAuthError("code", err instanceof Error ? err.message : String(err));
+    } finally {
+      submit.disabled = false;
+      submit.textContent = "Войти";
+    }
+  });
+
+  document.getElementById("auth-back")?.addEventListener("click", () => {
+    pendingEmail = "";
+    clearAuthErrors();
+    const codeInput = document.getElementById("auth-code") as HTMLInputElement | null;
+    if (codeInput) codeInput.value = "";
+    showAuthStep("email");
+  });
+}
+
+async function signOut(): Promise<void> {
+  authToken = null;
+  try {
+    await invoke("clear_auth_session");
+  } catch (err) {
+    log(`clear_auth_session failed: ${err}`);
+  }
+  showAuthGate();
+}
 
 // ─── Style picker ──────────────────────────────────────────────────────────
 

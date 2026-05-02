@@ -148,7 +148,24 @@ function render(state: State, text?: string) {
 render("idle");
 
 // ─── Event wiring ──────────────────────────────────────────────────────────
+//
+// Heartbeat indicator: every overlay-state event flashes data-beat="1" on
+// the pill for 200 ms. CSS turns this into a small dot pulse. Lets the
+// user see at a glance whether snapshot-tick events from main are reaching
+// the overlay at all, even when the transcribed text comes back empty
+// (silence / background noise / very short snapshot).
+let beatTimer: number | null = null;
+function flashHeartbeat() {
+  pill.dataset.beat = "1";
+  if (beatTimer !== null) window.clearTimeout(beatTimer);
+  beatTimer = window.setTimeout(() => {
+    pill.dataset.beat = "0";
+    beatTimer = null;
+  }, 200);
+}
+
 listen<StateChangePayload>("overlay-state", (e) => {
+  flashHeartbeat();
   render(e.payload.state, e.payload.text);
 });
 

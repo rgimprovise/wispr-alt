@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { listen, emit } from "@tauri-apps/api/event";
+import { listen, emitTo } from "@tauri-apps/api/event";
 import { getAllWebviewWindows } from "@tauri-apps/api/webviewWindow";
 
 type RecordingState = "idle" | "recording" | "transcribing";
@@ -62,10 +62,10 @@ async function setOverlayVisible(visible: boolean) {
       }
       log("overlay shown");
       await new Promise((r) => setTimeout(r, 16));
-      await emit("overlay-visible", true);
+      await emitTo("overlay", "overlay-visible", true);
     } else {
       // Play exit animation first, then hide at OS level.
-      await emit("overlay-visible", false);
+      await emitTo("overlay", "overlay-visible", false);
       await new Promise((r) => setTimeout(r, ANIM_MS));
       await overlay.hide();
       log("overlay hidden");
@@ -76,7 +76,13 @@ async function setOverlayVisible(visible: boolean) {
 }
 
 function updateOverlay(s: RecordingState, text: string) {
-  emit("overlay-state", { state: s, text });
+  // emitTo target the overlay webview directly. Plain emit() in Tauri 2
+  // is supposed to be a broadcast, but on macOS we observed live-preview
+  // updates not reaching the overlay window during recording — likely
+  // because the main webview is backgrounded the moment the user focuses
+  // their target app, and global emit can be deferred. Targeted emitTo
+  // bypasses that path and delivers straight to the overlay's listener.
+  emitTo("overlay", "overlay-state", { state: s, text });
 }
 
 // In-memory mirror of the JWT loaded from Rust settings on startup. Kept
@@ -237,12 +243,17 @@ async function tickSnapshot() {
       return;
     }
     const text = await transcribePartial(wav);
-    if (mySeq === snapshotSeq && state === "recording" && text) {
-      lastPartial = text;
-      updateOverlay("recording", text);
-      log(`partial: "${text.slice(0, 60)}"`);
-    } else if (!text) {
-      log(`tick: no text from /transcribe`);
+    if (mySeq === snapshotSeq && state === "recording") {
+      if (text) {
+        lastPartial = text;
+        log(`partial: "${text.slice(0, 60)}"`);
+      } else {
+        log(`tick: empty text from /transcribe (silence?)`);
+      }
+      // Always emit even on empty text — overlay needs the event to keep
+      // its heartbeat indicator alive, so the user can tell snapshot
+      // ticks are arriving even when the audio is silent.
+      updateOverlay("recording", lastPartial);
     }
   } catch (err) {
     log(`snapshot failed: ${err}`);

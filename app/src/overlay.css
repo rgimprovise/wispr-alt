@@ -285,3 +285,16 @@ body.visible {
 
 .pill[data-state="error"] .state-dot { background: var(--error); }
 .pill[data-state="error"] .state-label { color: var(--error); }
+
+/* Heartbeat: every overlay-state event briefly sets data-beat="1" on the
+   pill (cleared 200ms later in overlay.ts). The state-dot scales up by
+   ~25% during the beat — a subtle but visible cue that snapshot ticks
+   are arriving from the main webview, even when the transcribed text is
+   empty (silence / mic gap / very short snapshot window). */
+.pill[data-beat="1"] .state-dot {
+  transform: scale(1.25);
+  transition: transform 80ms cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+.pill .state-dot {
+  transition: transform 200ms ease-out;
+}

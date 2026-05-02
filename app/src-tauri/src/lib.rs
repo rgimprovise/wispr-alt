@@ -543,25 +543,44 @@ pub fn run() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app_handle, event| {
-            // Minimize-to-tray: closing the main window's X just hides it.
-            // The system tray icon stays so the user can bring it back.
-            // Explicit "Выход" in the tray menu is the only way to fully exit.
-            //
-            // We prevent_close() to suppress Tauri's default destroy, then
-            // hide() — the window's resources stay allocated for fast re-show.
-            if let tauri::RunEvent::WindowEvent {
-                label,
-                event: tauri::WindowEvent::CloseRequested { api, .. },
-                ..
-            } = &event
-            {
-                if label == "main" {
-                    api.prevent_close();
-                    if let Some(w) = app_handle.get_webview_window("main") {
-                        let _ = w.hide();
+            match &event {
+                // Minimize-to-tray: closing the main window's X just hides it.
+                // The system tray icon stays so the user can bring it back.
+                // Explicit "Выход" in the tray menu is the only way to fully exit.
+                //
+                // We prevent_close() to suppress Tauri's default destroy, then
+                // hide() — the window's resources stay allocated for fast re-show.
+                tauri::RunEvent::WindowEvent {
+                    label,
+                    event: tauri::WindowEvent::CloseRequested { api, .. },
+                    ..
+                } => {
+                    if label == "main" {
+                        api.prevent_close();
+                        if let Some(w) = app_handle.get_webview_window("main") {
+                            let _ = w.hide();
+                        }
+                        eprintln!("[lifecycle] main window hidden (still in tray)");
                     }
-                    eprintln!("[lifecycle] main window hidden (still in tray)");
                 }
+                // macOS-only: Reopen fires when the user clicks the app's
+                // Dock icon while the main window is hidden (we hide rather
+                // than destroy on close — see CloseRequested above). Without
+                // this, clicking the Dock icon does nothing and the user has
+                // to fully quit + relaunch from /Applications to get the
+                // settings window back.
+                #[cfg(target_os = "macos")]
+                tauri::RunEvent::Reopen { has_visible_windows, .. } => {
+                    if !has_visible_windows {
+                        if let Some(w) = app_handle.get_webview_window("main") {
+                            let _ = w.show();
+                            let _ = w.set_focus();
+                            let _ = w.unminimize();
+                            eprintln!("[lifecycle] main window restored from Dock click");
+                        }
+                    }
+                }
+                _ => {}
             }
         });
 }

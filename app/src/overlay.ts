@@ -5,6 +5,13 @@ type State = "idle" | "recording" | "transcribing";
 interface StateChangePayload {
   state: State;
   text?: string;
+  /** Optional diagnostic payload — shown in the debug strip under the foot. */
+  debug?: {
+    tick?: number;       // monotonic tick counter
+    wavBytes?: number;   // size of the WAV uploaded for this snapshot
+    rawChars?: number;   // length of the raw text returned by /transcribe
+    note?: string;       // free-form (e.g. "auth fail", "too short")
+  };
 }
 
 // ─── DOM refs ──────────────────────────────────────────────────────────────
@@ -164,9 +171,37 @@ function flashHeartbeat() {
   }, 200);
 }
 
+// Diagnostic strip elements. Optional — overlay still works without them
+// if the HTML is older.
+const debugTickEl = document.getElementById("debug-tick");
+const debugWavEl = document.getElementById("debug-wav");
+const debugRawEl = document.getElementById("debug-raw");
+function fmtBytes(n: number): string {
+  if (n < 1024) return `${n}B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)}K`;
+  return `${(n / 1024 / 1024).toFixed(1)}M`;
+}
+function updateDebug(d: StateChangePayload["debug"]) {
+  if (!d) return;
+  if (debugTickEl && d.tick !== undefined) {
+    debugTickEl.textContent = `tick: ${d.tick}`;
+  }
+  if (debugWavEl && d.wavBytes !== undefined) {
+    debugWavEl.textContent = `wav: ${fmtBytes(d.wavBytes)}`;
+  }
+  if (debugRawEl) {
+    if (d.note) {
+      debugRawEl.textContent = d.note;
+    } else if (d.rawChars !== undefined) {
+      debugRawEl.textContent = `raw: ${d.rawChars} chars`;
+    }
+  }
+}
+
 listen<StateChangePayload>("overlay-state", (e) => {
   flashHeartbeat();
   render(e.payload.state, e.payload.text);
+  updateDebug(e.payload.debug);
 });
 
 // Show/hide animation is driven by the main window so exit plays BEFORE

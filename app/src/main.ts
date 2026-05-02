@@ -75,14 +75,21 @@ async function setOverlayVisible(visible: boolean) {
   }
 }
 
-function updateOverlay(s: RecordingState, text: string) {
+interface OverlayDebug {
+  tick?: number;
+  wavBytes?: number;
+  rawChars?: number;
+  note?: string;
+}
+
+function updateOverlay(s: RecordingState, text: string, debug?: OverlayDebug) {
   // emitTo target the overlay webview directly. Plain emit() in Tauri 2
   // is supposed to be a broadcast, but on macOS we observed live-preview
   // updates not reaching the overlay window during recording — likely
   // because the main webview is backgrounded the moment the user focuses
   // their target app, and global emit can be deferred. Targeted emitTo
   // bypasses that path and delivers straight to the overlay's listener.
-  emitTo("overlay", "overlay-state", { state: s, text });
+  emitTo("overlay", "overlay-state", { state: s, text, debug });
 }
 
 // In-memory mirror of the JWT loaded from Rust settings on startup. Kept
@@ -225,11 +232,14 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   return clean.trim() || raw.trim();
 }
 
+let tickCounter = 0;
+
 async function tickSnapshot() {
   if (state !== "recording") return;
   if (snapshotInFlight) return; // skip if previous not finished
   snapshotInFlight = true;
   const mySeq = ++snapshotSeq;
+  const myTick = ++tickCounter;
   try {
     // Rolling 8 s window: live preview shows the trailing audio, which
     // keeps each /transcribe call small (~250 KB WAV) and the request
@@ -239,24 +249,42 @@ async function tickSnapshot() {
     // live preview on long sessions.
     const wav = (await invoke("snapshot_recent", { seconds: 8 })) as number[];
     if (wav.length < 4000) {
-      log(`tick: wav too short (${wav.length} bytes)`);
+      log(`tick #${myTick}: wav too short (${wav.length} bytes)`);
+      // still flash heartbeat / debug — overlay is interested in liveness
+      updateOverlay("recording", lastPartial, {
+        tick: myTick, wavBytes: wav.length, note: "wav too short",
+      });
       return;
     }
-    const text = await transcribePartial(wav);
+    let text: string | null = null;
+    let errNote: string | undefined;
+    try {
+      text = await transcribePartial(wav);
+    } catch (err) {
+      // Capture HTTP failures so we can surface them on the overlay
+      // diagnostic strip instead of silently logging only.
+      errNote = `error: ${String(err).slice(0, 40)}`;
+      log(`partial fetch failed: ${err}`);
+    }
     if (mySeq === snapshotSeq && state === "recording") {
       if (text) {
         lastPartial = text;
-        log(`partial: "${text.slice(0, 60)}"`);
-      } else {
-        log(`tick: empty text from /transcribe (silence?)`);
+        log(`partial #${myTick}: "${text.slice(0, 60)}" (${text.length} chars)`);
+      } else if (!errNote) {
+        log(`tick #${myTick}: empty text from /transcribe (silence?)`);
       }
-      // Always emit even on empty text — overlay needs the event to keep
-      // its heartbeat indicator alive, so the user can tell snapshot
-      // ticks are arriving even when the audio is silent.
-      updateOverlay("recording", lastPartial);
+      updateOverlay("recording", lastPartial, {
+        tick: myTick,
+        wavBytes: wav.length,
+        rawChars: text ? text.length : 0,
+        note: errNote,
+      });
     }
   } catch (err) {
     log(`snapshot failed: ${err}`);
+    updateOverlay("recording", lastPartial, {
+      tick: myTick, note: `snapshot fail: ${String(err).slice(0, 40)}`,
+    });
   } finally {
     snapshotInFlight = false;
   }
@@ -275,6 +303,7 @@ async function startRecording() {
     lastPartial = "";
     snapshotSeq = 0;
     snapshotInFlight = false;
+    tickCounter = 0;
 
     await invoke("start_recording", { streaming: false });
     setStatus("recording");
@@ -429,6 +458,21 @@ async function initMainApp() {
     log(`failed to load style: ${err}`);
   }
   wireStylePicker();
+
+  // App version in the footer — lets a tester report which build they are
+  // running. Read from the Tauri runtime, which sources it from
+  // tauri.conf.json. Fallback to "—" if the API is unavailable for any
+  // reason (older WebView / dev mode race).
+  try {
+    const { getVersion } = await import("@tauri-apps/api/app");
+    const v = await getVersion();
+    const el = document.querySelector("#app-version");
+    if (el) el.textContent = `v${v}`;
+  } catch (err) {
+    log(`failed to load app version: ${err}`);
+    const el = document.querySelector("#app-version");
+    if (el) el.textContent = "—";
+  }
 }
 
 // ─── Auth UI ───────────────────────────────────────────────────────────────

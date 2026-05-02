@@ -47,6 +47,18 @@
         <kbd class="kcap">fn</kbd>
         <kbd class="kcap">Space</kbd>
       </div>
+
+      <!-- Diagnostic strip (debug builds + tester runs). Shows what each
+           live-preview snapshot tick brought back from the server, so a
+           tester can tell at a glance: is the round-trip happening but
+           the text empty, or is something failing earlier? -->
+      <div class="pill__debug" id="debug">
+        <span id="debug-tick">tick: —</span>
+        <span class="debug-sep">·</span>
+        <span id="debug-wav">wav: —</span>
+        <span class="debug-sep">·</span>
+        <span id="debug-raw">raw: —</span>
+      </div>
     </div>
   </body>
 </html>

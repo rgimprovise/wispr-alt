@@ -257,6 +257,25 @@ body {
   gap: 8px;
 }
 
+/* App version footer — small, muted; lets a tester report which build
+   they are running without digging into menus or About dialogs. */
+.app-footer {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border-subtle);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  opacity: 0.7;
+  user-select: text;
+}
+.app-footer__sep {
+  opacity: 0.4;
+}
+
 #log {
   margin: 0;
   padding: 14px 16px;

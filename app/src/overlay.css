@@ -286,6 +286,29 @@ body.visible {
 .pill[data-state="error"] .state-dot { background: var(--error); }
 .pill[data-state="error"] .state-label { color: var(--error); }
 
+/* Diagnostic strip — tiny mono row under the foot, kept subtle so it
+   doesn't fight the main UI but is readable when you focus on it. Only
+   visible when its hooks are populated by main.ts; idle state shows
+   "tick: — · wav: — · raw: —". */
+.pill__debug {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 4px 12px 6px;
+  font-family: var(--font-mono, ui-monospace, Menlo, monospace);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  color: var(--text-tertiary, rgba(255, 255, 255, 0.4));
+  opacity: 0.55;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pill__debug .debug-sep {
+  opacity: 0.5;
+}
+
 /* Heartbeat: every overlay-state event briefly sets data-beat="1" on the
    pill (cleared 200ms later in overlay.ts). The state-dot scales up by
    ~25% during the beat — a subtle but visible cue that snapshot ticks

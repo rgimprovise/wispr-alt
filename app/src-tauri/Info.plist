@@ -2,20 +2,20 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-  <!-- Override the Latin productName ("Belovik" — needed for WiX/MSI ASCII
+  <!-- Override the Latin productName ("AGOLOS" — needed for WiX/MSI ASCII
        compatibility on Windows) with the Cyrillic display name on macOS.
-       Bundle binary on disk stays as "Belovik.app" but Finder/Dock/menubar
-       all show «Беловик». -->
+       Bundle binary on disk stays as "AGOLOS.app" but Finder/Dock/menubar
+       all show «А-ГОЛОС». -->
   <key>CFBundleDisplayName</key>
-  <string>Беловик</string>
+  <string>А-ГОЛОС</string>
   <key>CFBundleName</key>
-  <string>Беловик</string>
+  <string>А-ГОЛОС</string>
 
   <key>NSMicrophoneUsageDescription</key>
-  <string>Беловик нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
+  <string>А-ГОЛОС нужен доступ к микрофону для транскрипции вашей речи в текст.</string>
 
   <key>NSAppleEventsUsageDescription</key>
-  <string>Беловик использует System Events для вставки распознанного текста в активное приложение.</string>
+  <string>А-ГОЛОС использует System Events для вставки распознанного текста в активное приложение.</string>
 
   <!-- Enables arbitrary https endpoints (our backend) and allows the
        transparent overlay window behaviour to persist across Spaces. -->

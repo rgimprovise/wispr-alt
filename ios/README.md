@@ -1,9 +1,9 @@
-# Беловик iOS
+# А-ГОЛОС iOS
 
-Кастомная iOS-клавиатура «Беловик» с кнопкой диктовки + основное приложение для записи и распознавания. Архитектура та же что в брифе:
+Кастомная iOS-клавиатура «А-ГОЛОС» с кнопкой диктовки + основное приложение для записи и распознавания. Архитектура та же что в брифе:
 
-- **Main app** (SwiftUI, light Belovik-стиль) — onboarding + recording UI с полноценным доступом к микрофону
-- **Keyboard extension** (UIKit, паперно-графитовая палитра) — QWERTY/ЙЦУКЕН + кнопка 🎤
+- **Main app** (SwiftUI, dark А-ГОЛОС-стиль) — onboarding + recording UI с полноценным доступом к микрофону
+- **Keyboard extension** (UIKit, тёмная палитра, signal-red акцент) — QWERTY/ЙЦУКЕН + кнопка 🎤
 - **App Group** для обмена транскриптом
 
 ## ⚠️ Про AirDrop и установку на чужой iPhone
@@ -29,14 +29,14 @@
 brew install xcodegen
 cd ~/Desktop/wispr-alt/ios
 xcodegen generate
-open Belovik.xcodeproj
+open AGOLOS.xcodeproj  # name comes from `name: AGOLOS` in project.yml
 ```
 
 ### Шаг 2. Подписать оба target'а
 
-В Xcode для **обоих** target'ов (`Belovik` и `BelovikKeyboard`):
+В Xcode для **обоих** target'ов (`AGOLOS` и `AGOLOSKeyboard`):
 
-1. В левом сайдбаре кликните по проекту `Belovik` (синяя иконка сверху)
+1. В левом сайдбаре кликните по проекту `AGOLOS` (синяя иконка сверху)
 2. По центру выберите target → вкладка **Signing & Capabilities**
 3. **Team:** выберите ваш Apple ID. Если в списке нет — Xcode → Settings → Accounts → + Apple ID
 4. Bundle Identifier: должен быть **уникальным во всем мире**. Префикс `com.wispralt.app` может быть занят. Переименуйте в свой обратный домен, например `com.<вашлогин>.belovik` (для главного target'а) и `com.<вашлогин>.belovik.keyboard` (для keyboard target'а)
@@ -70,16 +70,16 @@ static let appGroup = "group.app.agolos.shared"
 В приложении:
 1. **«1. Разрешить микрофон»** → Allow
 2. **«2. Включить клавиатуру»** → откроется Settings, путь:  
-   *Settings → General → Keyboard → Keyboards → Add New Keyboard… → Беловик*
-3. **«3. Включить Allow Full Access»** → в том же экране тапните по «Беловик» → включите тоггл
+   *Settings → General → Keyboard → Keyboards → Add New Keyboard… → А-ГОЛОС*
+3. **«3. Включить Allow Full Access»** → в том же экране тапните по «А-ГОЛОС» → включите тоггл
 
 ### Шаг 6. Использовать
 
 В Notes / Telegram / Mail / любом приложении с текстовым полем:
 
 1. Тап в поле → стандартная клавиатура поднимается
-2. Удержать **🌐** (globe) → выбрать **Беловик**
-3. Тап **🎤** на клавиатуре Беловик → откроется наше приложение
+2. Удержать **🌐** (globe) → выбрать **А-ГОЛОС**
+3. Тап **🎤** на клавиатуре А-ГОЛОС → откроется наше приложение
 4. Скажите фразу → «Готово» → «Передать в клавиатуру»
 5. Свайп вверх для возврата в исходное приложение
 6. Текст вставится автоматически в поле
@@ -93,7 +93,7 @@ Free-tier signing → билд истекает через 7 дней. На iPho
 - **Запись в основном приложении, не в keyboard extension:** Apple ограничивает аудио в keyboard extensions, и приложения такой архитектуры регулярно реджектят в App Store. Поэтому keyboard просто триггерит deep link.
 - **Передача транскрипта через App Group UserDefaults:** легковесно, без сложной IPC, синхронно.
 - **Polling в `viewWillAppear`:** keyboard проверяет shared storage каждый раз когда становится видимой → если есть pending → вставляет.
-- **Нет красного:** микрофонная клавиша графитовая, не красная — следуем брендбуку Belovik.
+- **Нет красного:** микрофонная клавиша графитовая, не красная — следуем брендбуку А-ГОЛОС (см. brand/BRAND.md).
 
 ## Известные ограничения MVP
 

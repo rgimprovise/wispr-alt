@@ -1,4 +1,4 @@
-# wispr-alt — Deploy & package guide
+# А-ГОЛОС (AGOLOS) — Deploy & package guide
 
 **Настройка:** backend на вашем VPS за Caddy (автоматический HTTPS), установщики собираются локально (macOS) и через GitHub Actions (Windows).
 
@@ -114,10 +114,10 @@ src-tauri/target/x86_64-apple-darwin/release/bundle/dmg/wispr-alt_0.1.0_x64.dmg
 
 ### 2.2. Установка на вашем Mac
 
-1. Откройте `.dmg`, перетащите **wispr-alt.app** в Applications
+1. Откройте `.dmg`, перетащите **AGOLOS.app** в Applications
 2. Запустите — macOS скажет "cannot be opened because the developer cannot be verified"
 3. **Обход** (один раз):
-   - System Settings → Privacy & Security → прокрутите вниз → "wispr-alt.app was blocked" → **Open Anyway**
+   - System Settings → Privacy & Security → прокрутите вниз → "AGOLOS.app was blocked" → **Open Anyway**
    - ИЛИ в Finder: правая кнопка на app → Open → Open Anyway
 4. Разрешите **Microphone** когда попросит
 5. При первом F5 → запись → stop: попросит **Automation** для System Events — разрешите
@@ -183,7 +183,7 @@ GitHub → Actions → запустившийся run → Artifacts:
 >
 > 2. Пройди installer, всё по умолчанию.
 >
-> 3. Запусти wispr-alt из меню Пуск. Разреши доступ к микрофону.
+> 3. Запусти AGOLOS из меню Пуск. Разреши доступ к микрофону.
 >
 > 4. Где угодно (Notepad, Word, Slack, Telegram) поставь курсор в текстовое поле и нажми **F5**. Начни говорить.
 >
@@ -198,8 +198,8 @@ GitHub → Actions → запустившийся run → Artifacts:
 | Симптом | Причина | Фикс |
 |---------|---------|------|
 | macOS: "app is damaged" | ad-hoc подпись не распознана | System Settings → Privacy & Security → Open Anyway (первый раз) |
-| macOS: F5 не реагирует после установки | глобальный хоткей требует Accessibility | System Settings → Privacy & Security → Accessibility → добавить wispr-alt, перезапустить |
-| macOS: текст копируется в буфер, но не вставляется | System Events не имеет Automation permission | System Settings → Privacy & Security → Automation → wispr-alt → System Events включить |
+| macOS: F5 не реагирует после установки | глобальный хоткей требует Accessibility | System Settings → Privacy & Security → Accessibility → добавить AGOLOS, перезапустить |
+| macOS: текст копируется в буфер, но не вставляется | System Events не имеет Automation permission | System Settings → Privacy & Security → Automation → AGOLOS → System Events включить |
 | Приложение говорит "failed to fetch" в логе | backend недоступен или CORS / SSL | `curl https://alrcvscribe.n8nrgimprovise.space/` с любой машины |
 | Fly.io ничего не знаю про это | мы ушли с Fly.io | игнорировать, ничего не надо |
 | Backend контейнер всё время рестартует | проблема с .env или Docker | `docker compose logs` на VPS |

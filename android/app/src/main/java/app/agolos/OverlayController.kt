@@ -300,7 +300,7 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildBubble(): FrameLayout {
-        // Belovik bubble: rounded square (16dp radius) on paper-pure with
+        // AGOLOS bubble: rounded square (16dp radius) on paper-pure with
         // a graphite Б watermark, whole bubble at 60% opacity.
         val outer = FrameLayout(ctx).apply {
             background = GradientDrawable().apply {
@@ -366,7 +366,7 @@ class OverlayController(private val service: WisprService) {
     }
 
     private fun buildExpanded(): LinearLayout {
-        // Belovik expanded card: paper-pure light glass with soft 24dp radius.
+        // AGOLOS expanded card: paper-pure light glass with soft 24dp radius.
         val card = LinearLayout(ctx).apply {
             orientation = LinearLayout.VERTICAL
             background = GradientDrawable().apply {
@@ -428,7 +428,7 @@ class OverlayController(private val service: WisprService) {
         }
 
         // No red — graphite for primary mic, soft surfaces for secondary buttons.
-        // Mic is now a Belovik-Б watermark on a graphite square (60% alpha),
+        // Mic is now a АГОЛОС-А watermark on a graphite square (60% alpha),
         // not the 🎤 emoji.
         val cancelBtn = circleButton("✕", 0xFFE8E5DD.toInt(), fg = 0xFF555A63.toInt()) { onCancelTap() }
         val micBtn = agolosSquareButton(big = true) { onMicTap() }
@@ -476,7 +476,7 @@ class OverlayController(private val service: WisprService) {
     }
 
     /**
-     * Mic-equivalent button: rounded square in paper-pure with the Belovik
+     * Mic-equivalent button: rounded square in paper-pure with the AGOLOS
      * «Б» mark centered in graphite, whole button at 60% opacity. Matches
      * the bubble visual language — same brand element.
      */

@@ -1,4 +1,4 @@
-# wispr-alt backend
+# А-ГОЛОС backend
 
 Bun + Hono. Runs on the VPS, fronted by Caddy. Two responsibilities:
 
@@ -21,7 +21,7 @@ sent — fine for local testing.
 ```
 POST /auth/request  { email }                  → 200 { ok: true }
 POST /auth/verify   { email, code }            → 200 { token, user }
-GET  /auth/verify-link?token=...                → HTML w/ deep link belovik://auth?token=JWT
+GET  /auth/verify-link?token=...                → HTML w/ deep link agolos://auth?token=JWT
 GET  /auth/me        Authorization: Bearer JWT  → 200 { id, email }
 ```
 

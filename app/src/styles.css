@@ -1,5 +1,6 @@
-/* Main (settings) window — Belovik design system.
-   Light-first, soft radii (16-24px), Manrope/Fraunces typography, no red accents. */
+/* Main (settings) window — А-ГОЛОС / AGOLOS design system.
+   Dark-first, charcoal black + signal red, soft radii (14-20px), Inter Display
+   typography. See brand/BRAND.md for the source of truth. */
 
 body {
   background: var(--bg-base);

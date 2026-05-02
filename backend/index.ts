@@ -7,6 +7,7 @@ import {
   transcribeOnly,
   type Style,
 } from "./src/transcribe";
+import { markdownToPlain } from "./src/markdownToPlain";
 import { auth, requireAuth } from "./src/auth";
 import { verifyJwt } from "./src/jwt";
 import { StreamSession } from "./src/streamTranscribe";
@@ -18,7 +19,7 @@ const app = new Hono();
 app.use("/*", cors({ origin: "*" })); // tighten in prod
 
 app.get("/", (c) =>
-  c.json({ ok: true, service: "agolos", version: "2.0.0-alpha.2" })
+  c.json({ ok: true, service: "agolos", version: "2.0.0" })
 );
 
 app.route("/auth", auth);
@@ -59,8 +60,18 @@ app.post("/transcribe", requireAuth, async (c) => {
           const send = (obj: unknown) => {
             controller.enqueue(enc.encode(JSON.stringify(obj) + "\n"));
           };
+          // Heartbeat during the blocking transcribe-only phase. For 2-min
+          // recordings OpenAI's transcription takes 15-30s, during which
+          // the NDJSON stream produces no events; the desktop client's
+          // inactivity timer (45s) was tripping spuriously and any nginx
+          // buffer in between would compound the silence. Emitting a ping
+          // every 10s keeps the connection visibly alive end-to-end.
+          const heartbeat = setInterval(() => {
+            try { send({ type: "ping" }); } catch { /* controller closed */ }
+          }, 10_000);
           try {
             const raw = await transcribeOnly(file, language);
+            clearInterval(heartbeat);
             send({ type: "raw", text: raw });
             if (raw.length === 0) {
               send({ type: "done", text: "" });
@@ -84,13 +95,20 @@ app.post("/transcribe", requireAuth, async (c) => {
               acc += chunk;
               send({ type: "delta", text: chunk });
             }
-            send({ type: "done", text: acc.trim() || raw });
+            // Deltas streamed raw markdown for live preview; the final
+            // `done` payload is what actually gets pasted, so convert to
+            // plain text here. The client overwrites its accumulator
+            // from `done.text` — overlay flickers from markdown to plain
+            // for a frame, then paste lands clean.
+            const finalText = markdownToPlain(acc.trim()) || raw;
+            send({ type: "done", text: finalText });
           } catch (err) {
             send({
               type: "error",
               message: err instanceof Error ? err.message : String(err),
             });
           } finally {
+            clearInterval(heartbeat);
             controller.close();
           }
         },

@@ -490,7 +490,7 @@ pub fn run() {
             // main window. Left-click toggles the main window; right-click
             // (or Ctrl-click on macOS) opens the menu with explicit Quit.
             let show_item = MenuItem::with_id(
-                app, "tray_show", "Открыть Беловик", true, None::<&str>,
+                app, "tray_show", "Открыть А-ГОЛОС", true, None::<&str>,
             )?;
             let quit_item = MenuItem::with_id(
                 app, "tray_quit", "Выход", true, None::<&str>,

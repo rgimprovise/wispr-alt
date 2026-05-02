@@ -55,8 +55,8 @@ android {
         applicationId = "app.agolos"
         minSdk = 26
         targetSdk = 34
-        versionCode = 18
-        versionName = "2.0.0-alpha.1"
+        versionCode = 19
+        versionName = "2.0.0-alpha.3"
 
         // Backend URL baked in at compile time.
         val backendUrl = System.getenv("WISPR_BACKEND_URL")

@@ -24,7 +24,7 @@ import androidx.core.content.ContextCompat
 /**
  * Single-activity router that decides between the onboarding carousel
  * and the home screen based on `OnboardingState.isCompleted()` and the
- * runtime permission state. All visuals follow the Belovik design system:
+ * runtime permission state. All visuals follow the А-ГОЛОС (AGOLOS) design system:
  * light-first paper background, soft-radius cards, graphite accents.
  */
 class MainActivity : AppCompatActivity() {

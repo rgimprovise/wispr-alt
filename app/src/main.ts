@@ -132,12 +132,27 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
   // but the perceived latency much shorter — text starts streaming in
   // immediately after stop instead of going dark for 4-6s.
   //
-  // Hard 60s timeout via AbortController guards against backend hangs
-  // (cleanup model returning nothing for very long inputs etc.) — we'd
-  // rather fall back to whatever raw transcript we already received
-  // than leave the overlay stuck on "transcribing" forever.
+  // Two-tier timeout. A single 60s ceiling was too tight for 2-minute
+  // dictations: transcribeOnly alone takes 15-30s on the OpenAI side,
+  // then cleanup streams for another 30-60s+, blowing past the budget
+  // and leaving the overlay frozen.
+  //
+  //   inactivityMs — abort if no NDJSON event for 45s. Picks up real
+  //                  hangs (TLS stall, OpenAI dead, nginx buffering)
+  //                  while letting healthy long requests run.
+  //   hardCapMs    — absolute cap so a slow trickle can't stall forever.
+  //
+  // On any abort we still return raw if we received it; the user gets
+  // their transcript pasted instead of staring at "структурирую".
   const ac = new AbortController();
-  const timeout = setTimeout(() => ac.abort(), 60_000);
+  const inactivityMs = 45_000;
+  const hardCapMs = 180_000;
+  let inactivityTimer = setTimeout(() => ac.abort(), inactivityMs);
+  const hardTimer = setTimeout(() => ac.abort(), hardCapMs);
+  const bumpInactivity = () => {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = setTimeout(() => ac.abort(), inactivityMs);
+  };
   let raw = "";
   let clean = "";
   try {
@@ -152,9 +167,11 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
     const reader = res.body.getReader();
     const dec = new TextDecoder();
     let buf = "";
-    while (true) {
+    let finished = false; // set on `done` event — break the read loop early
+    outer: while (!finished) {
       const { value, done } = await reader.read();
       if (done) break;
+      bumpInactivity();
       buf += dec.decode(value, { stream: true });
       let idx: number;
       while ((idx = buf.indexOf("\n")) >= 0) {
@@ -168,11 +185,20 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
           // Show raw text as soon as transcription finishes so the user
           // sees something immediately. Cleanup deltas will overwrite.
           updateOverlay("transcribing", raw);
+          log(`raw received (${raw.length} chars)`);
         } else if (ev.type === "delta") {
           clean += ev.text ?? "";
           updateOverlay("transcribing", clean);
         } else if (ev.type === "done") {
           clean = (ev.text ?? clean).trim();
+          // Don't wait for reader to deliver {done:true} — nginx buffering
+          // or keep-alive between us and the backend can hold the socket
+          // open for tens of seconds after the body is fully received.
+          // The previous version froze in `transcribing` until the hard
+          // timeout fired even though all content had already arrived.
+          finished = true;
+          try { await reader.cancel(); } catch { /* socket already gone */ }
+          break outer;
         } else if (ev.type === "error") {
           throw new Error(ev.message ?? "transcribe error");
         }
@@ -182,12 +208,13 @@ async function transcribeFinal(wavBytes: number[]): Promise<string> {
     // Timeout / network drop → use whatever we accumulated. Better to
     // paste raw than to leave the user staring at a frozen overlay.
     if ((err as any)?.name === "AbortError") {
-      log("transcribe stream timeout — falling back to raw");
+      log(`transcribe stream timeout (raw=${raw.length}, clean=${clean.length}) — falling back`);
     } else {
       log(`transcribe stream error: ${err}`);
     }
   } finally {
-    clearTimeout(timeout);
+    clearTimeout(inactivityTimer);
+    clearTimeout(hardTimer);
   }
   return clean.trim() || raw.trim();
 }
@@ -198,13 +225,15 @@ async function tickSnapshot() {
   snapshotInFlight = true;
   const mySeq = ++snapshotSeq;
   try {
-    // Full buffer per tick: text in the overlay grows monotonically.
-    // A rolling window would be cheaper but produces a jarring "scroll"
-    // effect once the recording exceeds the window length — old words
-    // drop out as new ones come in. snapshotInFlight skips overlapping
-    // ticks if a long recording's transcription doesn't fit in 1 s.
-    const wav = (await invoke("snapshot_recording")) as number[];
+    // Rolling 8 s window: live preview shows the trailing audio, which
+    // keeps each /transcribe call small (~250 KB WAV) and the request
+    // round-trip well under the 1 s tick. The earlier "full buffer per
+    // tick" approach grew to 5+ MB on 2-min recordings, blocked tick
+    // overlap (snapshotInFlight stayed true), and is what was breaking
+    // live preview on long sessions.
+    const wav = (await invoke("snapshot_recent", { seconds: 8 })) as number[];
     if (wav.length < 4000) {
+      log(`tick: wav too short (${wav.length} bytes)`);
       return;
     }
     const text = await transcribePartial(wav);
@@ -212,6 +241,8 @@ async function tickSnapshot() {
       lastPartial = text;
       updateOverlay("recording", text);
       log(`partial: "${text.slice(0, 60)}"`);
+    } else if (!text) {
+      log(`tick: no text from /transcribe`);
     }
   } catch (err) {
     log(`snapshot failed: ${err}`);
